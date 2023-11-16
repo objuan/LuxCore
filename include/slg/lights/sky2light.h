@@ -77,6 +77,11 @@ public:
 	ELVCParams visibilityMapCacheParams;
 	bool useVisibilityMapCache;
 
+	// colorspace
+	OCIO::ConstCPUProcessorRcPtr cpu;
+	ColorSpaceConfig colorSpaceConfig;
+	//ColorSpaceConverters* colorSpaceConv;
+
 private:
 	luxrays::Vector SampleSkyDome(const float u0, const float u1) const;
 	void SampleSkyDomePdf(const Scene &scene, float *directPdf, float *emissionPdf) const;

@@ -21,6 +21,15 @@
 #include "slg/lights/sky2light.h"
 #include "slg/lights/data/ArHosekSkyModelData.h"
 
+#include <OpenColorIO/OpenColorIO.h>
+namespace OCIO = OCIO_NAMESPACE;
+
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
+#include <OpenImageIO/dassert.h>
+
+#include "slg/utils/filenameresolver.h"
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
@@ -146,7 +155,7 @@ SkyLight2::SkyLight2() : localSunDir(0.f, 0.f, 1.f), turbidity(2.2f),
 		groundAlbedo(0.f, 0.f, 0.f), groundColor(0.f, 0.f, 0.f),
 		hasGround(false), hasGroundAutoScale(true),
 		distributionWidth(512), distributionHeight(256),
-		skyDistribution(nullptr), visibilityMapCache(nullptr) {
+		skyDistribution(nullptr), visibilityMapCache(nullptr){
 }
 
 SkyLight2::~SkyLight2() {
@@ -167,16 +176,37 @@ Spectrum SkyLight2::ComputeSkyRadiance(const Vector &w) const {
 	const Spectrum zenithTerm(hTerm * sqrtf(cosT));
 
 	// 683 is a scaling factor to convert W to lm
-	return 683.f * (Spectrum(1.f) + aTerm * Exp(bTerm / (cosT + .01f))) *
+	Spectrum radiance = 683.f * (Spectrum(1.f) + aTerm * Exp(bTerm / (cosT + .01f))) *
 		(cTerm + expTerm + rayleighTerm + mieTerm + zenithTerm) * radianceTerm;
+
+	if (cpu.get() != nullptr)
+	{
+		//cpu->ConvertFrom(colorSpaceConfig, radiance);
+		OCIO::PackedImageDesc img(radiance.c, 1, 1, 3);
+		cpu->apply(img);
+	}
+
+	return radiance;
 }
 
 Spectrum SkyLight2::ComputeRadiance(const Vector &w) const {
+	Spectrum radiance;
 	if (hasGround && (Dot(w, absoluteUpDir) < 0.f)) {
 		// Lower hemisphere
-		return scaledGroundColor;
-	} else
-		return temperatureScale * gain * ComputeSkyRadiance(w);
+		radiance= scaledGroundColor;
+	}
+	else
+		radiance= temperatureScale * gain * ComputeSkyRadiance(w);
+
+	//if (colorSpaceConv != nullptr)
+	if (cpu.get() != nullptr)
+	{
+		//cpu->ConvertFrom(colorSpaceConfig, radiance);
+		OCIO::PackedImageDesc img(radiance.c, 1, 1, 3);
+		cpu->apply(img);
+	}
+
+	return radiance;
 }
 
 void SkyLight2::Preprocess() {
@@ -315,6 +345,7 @@ void SkyLight2::GetPreprocessedData(float *absoluteSunDirData, float *absoluteUp
 	if (elvc)
 		*elvc = visibilityMapCache;
 }
+
 
 float SkyLight2::GetPower(const Scene &scene) const {
 	const float envRadius = GetEnvRadius(scene);
@@ -492,6 +523,7 @@ void SkyLight2::UpdateVisibilityMap(const Scene *scene, const bool useRTMode) {
 		visibilityMapCache->Build();
 	}
 }
+ColorSpaceConfig colorSpaceCfg;
 
 Properties SkyLight2::ToProperties(const ImageMapCache &imgMapCache, const bool useRealFileName) const {
 	const string prefix = "scene.lights." + GetName();
@@ -508,6 +540,9 @@ Properties SkyLight2::ToProperties(const ImageMapCache &imgMapCache, const bool 
 	props.Set(Property(prefix + ".distribution.height")(distributionHeight));
 
 	props.Set(Property(prefix + ".visibilitymapcache.enable")(useVisibilityMapCache));
+
+	//ColorSpaceConfig::FromProperties(props, prefix, colorSpaceCfg, ColorSpaceConfig::defaultLuxCoreConfig);
+
 	if (useVisibilityMapCache)
 		props << EnvLightVisibilityCache::Params2Props(prefix, visibilityMapCacheParams);
 

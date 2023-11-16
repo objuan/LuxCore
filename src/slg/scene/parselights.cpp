@@ -254,6 +254,24 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 		if (sl->useVisibilityMapCache)
 			sl->visibilityMapCacheParams = EnvLightVisibilityCache::Properties2Params(propName, props);
 
+		ColorSpaceConfig::FromProperties(props,propName, sl->colorSpaceConfig, ColorSpaceConfig::defaultLuxCoreConfig);
+		if (sl->colorSpaceConfig.colorSpaceType == ColorSpaceConfig::OPENCOLORIO_COLORSPACE)
+		{
+			//sl->colorSpaceConv = &colorSpaceConv;
+
+			auto configFileName = sl->colorSpaceConfig.ocio.configName;
+			auto inputColorSpace = sl->colorSpaceConfig.ocio.colorSpaceName;
+
+			OCIO::ConstConfigRcPtr config = (configFileName == "") ?
+				OCIO::GetCurrentConfig() :
+				OCIO::Config::CreateFromFile(SLG_FileNameResolver.ResolveFile(configFileName).c_str());
+
+			OCIO::ConstProcessorRcPtr processor = config->getProcessor(inputColorSpace.c_str(), OCIO::ROLE_SCENE_LINEAR);
+
+			//OCIO::ConstCPUProcessorRcPtr cpu;
+			sl->cpu = processor->getDefaultCPUProcessor();
+		}
+
 		lightSource = sl;
 	} else if (lightType == "infinite") {
 		const Matrix4x4 mat = props.Get(Property(propName + ".transformation")(Matrix4x4::MAT_IDENTITY)).Get<Matrix4x4>();
