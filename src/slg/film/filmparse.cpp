@@ -56,6 +56,7 @@ namespace OCIO = OCIO_NAMESPACE;
 #include "slg/film/imagepipeline/plugins/bakemapmargin.h"
 #include "slg/film/imagepipeline/plugins/colorlut.h"
 #include "slg/film/imagepipeline/plugins/optixdenoiser.h"
+#include "slg/film/imagepipeline/plugins/real_bloom.h"
 
 using namespace std;
 using namespace luxrays;
@@ -785,7 +786,15 @@ ImagePipeline *Film::CreateImagePipeline(const Properties &props, const string &
 						props.Get(Property(prefix + ".look")("look")).Get<string>()));
 				} else
 					throw runtime_error("Unknown mode for TONEMAP_OPENCOLORIO: " + mode);
-			} else
+			} 
+			else if (type == "REAL_BLOOM") {
+				const float blendExposure = Clamp(props.Get(Property(prefix + ".blendExposure")(-5.0f)).Get<float>(), -30.f, INFINITY);
+				const float blendMix = Clamp(props.Get(Property(prefix + ".blendMix")(0.2f)).Get<float>(), 0.f, INFINITY);
+				imagePipeline->AddPlugin(new RealBloomPlugin(blendExposure, blendMix,
+					props.Get(Property(prefix + ".kernelPath")(OCIO::ROLE_RENDERING)).Get<string>()
+					));
+			}
+			else
 				throw runtime_error("Unknown image pipeline plugin type: " + type);
 		}
 	} else {
