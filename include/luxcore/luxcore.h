@@ -1003,6 +1003,8 @@ public:
 	 */
 	virtual void Parse(const luxrays::Properties &props) = 0;
 
+	virtual void WaitReady() = 0;
+
 	/*!
 	 * \brief Duplicate an object in an instance using the passed transformation.
 	 *

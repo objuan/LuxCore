@@ -28,8 +28,16 @@ namespace slg {
 
 extern void (*SLG_SDLDebugHandler)(const char *msg);
 
-#define SDL_LOG(a) { if (slg::SLG_SDLDebugHandler) { std::stringstream _LR_LOG_LOCAL_SS; _LR_LOG_LOCAL_SS << a; slg::SLG_SDLDebugHandler(_LR_LOG_LOCAL_SS.str().c_str()); } }
+#define SDL_LOG(a) { if (slg::SLG_SDLDebugHandler) { std::stringstream _LR_LOG_LOCAL_SS; time_t now = time(NULL); struct tm t = *localtime(&now); _LR_LOG_LOCAL_SS << "[" << t.tm_mday << "-" << t.tm_mon + 1 << "-" << t.tm_year + 1900 << " " << t.tm_hour << ":" << t.tm_min << ":" << t.tm_sec << "] ";  _LR_LOG_LOCAL_SS << a; slg::SLG_SDLDebugHandler(_LR_LOG_LOCAL_SS.str().c_str()); } }
 
+/*std::string GetTimeStamp_log()
+{
+	time_t now = time(NULL);
+	struct tm t = *localtime(&now);
+	std::stringstream ss;
+	ss << t.tm_mday << "-" << t.tm_mon + 1 << "-" << t.tm_year + 1900 << " " << t.tm_hour << ":" << t.tm_min << ":" << t.tm_sec;
+	return ss.str();
+}*/
 }
 
 #endif	/* _SLG_SDL_H */

@@ -74,6 +74,7 @@ typedef enum {
 typedef int SceneRayType;
 
 class SampleResult;
+class TextureLoadingThread;
 
 class Scene {
 public:
@@ -188,6 +189,13 @@ public:
 
 	friend class boost::serialization::access;
 
+	TextureLoadingThread *textureLoadingThread;
+
+//	void ProcessTextures();
+	void LoadTexture(const luxrays::Properties& props, const std::string& texName, int threadId);
+
+	void WaitReady();
+	
 private:
 	ColorSpaceConverters colorSpaceConv;
 
@@ -215,6 +223,8 @@ private:
 	ImageMap *CreateEmissionMap(const std::string &propName, const luxrays::Properties &props);
 	LightSource *CreateLightSource(const std::string &lightName, const luxrays::Properties &props);
 
+	void CreateTextureThread(const std::string& texName, const luxrays::Properties& props);
+	
 	luxrays::ExtTriangleMesh *CreateInlinedMesh(const std::string &shapeName,
 			const std::string &propName, const luxrays::Properties &props);
 

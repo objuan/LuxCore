@@ -895,6 +895,15 @@ void SceneImpl::Parse(const Properties &props) {
 	API_END();
 }
 
+void SceneImpl::WaitReady() {
+	API_BEGIN_NOARGS();
+
+	scene->WaitReady();
+
+	API_END();
+}
+
+
 void SceneImpl::DuplicateObject(const std::string &srcObjName, const std::string &dstObjName,
 		const float transMat[16], const unsigned int objectID) {
 	API_BEGIN("{}, {}, {}, {}", ToArgString(srcObjName), ToArgString(dstObjName),

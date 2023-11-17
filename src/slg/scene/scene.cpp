@@ -42,7 +42,8 @@
 #include "slg/textures/constfloat.h"
 #include "slg/textures/constfloat3.h"
 #include "slg/textures/imagemaptex.h"
-#include "slg/utils/pathinfo.h"
+#include "slg/scene/TextureLoadingThread.h"
+#include "slg/scene/scene.h"
 
 using namespace std;
 using namespace luxrays;
@@ -63,9 +64,11 @@ Scene::Scene(const Properties &scnProps, const luxrays::Properties *resizePolicy
 }
 
 void Scene::Init(const luxrays::Properties *resizePolicyProps) {
+	SDL_LOG("***********************************************************************************************************************");
 	defaultWorldVolume = NULL;
 	// Just in case there is an unexpected exception during the scene loading
     camera = NULL;
+	textureLoadingThread = new TextureLoadingThread(this);
 
 	dataSet = NULL;
 
@@ -82,6 +85,8 @@ Scene::~Scene() {
 	delete camera;
 
 	delete dataSet;
+
+	delete textureLoadingThread;
 }
 
 Properties Scene::ToProperties(const bool useRealFileName) const {
@@ -355,6 +360,11 @@ void Scene::Parse(const Properties &props) {
 	//--------------------------------------------------------------------------
 
 	ParseLights(props);
+
+	//textureLoadingThread->process();
+}
+void Scene::WaitReady() {
+	textureLoadingThread->waitEnd();
 }
 
 void Scene::RemoveUnusedImageMaps() {

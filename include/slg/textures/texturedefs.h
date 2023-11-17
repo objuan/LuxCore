@@ -23,9 +23,12 @@
 #include <vector>
 
 #include <boost/unordered_set.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "luxrays/core/namedobjectvector.h"
 #include "slg/textures/texture.h"
+
+extern 	std::mutex txt_mutex;
 
 namespace slg {
 
@@ -39,32 +42,40 @@ public:
 	~TextureDefinitions() { }
 
 	bool IsTextureDefined(const std::string &name) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return texs.IsObjDefined(name);
 	}
 
 	void DefineTexture(Texture *t);
 
 	const Texture *GetTexture(const std::string &name) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return static_cast<const Texture *>(texs.GetObj(name));
 	}
 	const Texture *GetTexture(const u_int index) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return static_cast<const Texture *>(texs.GetObj(index));
 	}
 	u_int GetTextureIndex(const std::string &name) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return texs.GetIndex(name);
 	}
 	u_int GetTextureIndex(const Texture *t) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return texs.GetIndex(t);
 	}
 
 	u_int GetSize() const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		return texs.GetSize();
 	}
 	void GetTextureNames(std::vector<std::string> &names) const {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		texs.GetNames(names);
 	}
 
 	void DeleteTexture(const std::string &name) {
+		std::lock_guard<std::mutex> lock(txt_mutex);
 		texs.DeleteObj(name);
 	}
 

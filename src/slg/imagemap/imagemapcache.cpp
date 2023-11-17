@@ -28,6 +28,9 @@ using namespace std;
 using namespace luxrays;
 using namespace slg;
 
+//Bartek
+std::mutex imgMapCache_mutex;
+
 //------------------------------------------------------------------------------
 // ImageMapCache
 //------------------------------------------------------------------------------
@@ -82,8 +85,39 @@ string ImageMapCache::GetCacheKey(const string &fileName) const {
 	return fileName;
 }
 
+
+ImageMap* ImageMapCache::Find(const string& fileName, const ImageMapConfig& imgCfg) {
+	// Compose the cache key
+	string key = GetCacheKey(fileName);
+
+	// Check if the image map has been already defined
+	boost::unordered_map<std::string, ImageMap*>::const_iterator it = mapByKey.find(key);
+
+	if (it != mapByKey.end()) {
+		//SDL_LOG("Cached defined image map: " << fileName);
+		ImageMap* im = (it->second);
+		return im;
+	}
+
+	// Check if it is a reference to a file
+	key = GetCacheKey(fileName, imgCfg);
+	it = mapByKey.find(key);
+
+	if (it != mapByKey.end()) {
+		//SDL_LOG("Cached file image map: " << fileName);
+		ImageMap* im = (it->second);
+		return im;
+	}
+
+	return NULL;
+}
+
 ImageMap *ImageMapCache::GetImageMap(const string &fileName, const ImageMapConfig &imgCfg,
 		const bool applyResizePolicy) {
+	
+	//Bartek
+	imgMapCache_mutex.lock();	
+	
 	// Compose the cache key
 	string key = GetCacheKey(fileName);
 
@@ -93,6 +127,10 @@ ImageMap *ImageMapCache::GetImageMap(const string &fileName, const ImageMapConfi
 	if (it != mapByKey.end()) {
 		//SDL_LOG("Cached defined image map: " << fileName);
 		ImageMap *im = (it->second);
+
+		//Bartek
+		imgMapCache_mutex.unlock();	
+	
 		return im;
 	}
 
@@ -103,9 +141,16 @@ ImageMap *ImageMapCache::GetImageMap(const string &fileName, const ImageMapConfi
 	if (it != mapByKey.end()) {
 		//SDL_LOG("Cached file image map: " << fileName);
 		ImageMap *im = (it->second);
+
+		//Bartek
+		imgMapCache_mutex.unlock();
+
 		return im;
 	}
 
+	//Bartek
+	imgMapCache_mutex.unlock();
+	
 	// I haven't yet loaded the file
 
 	ImageMap *im;
@@ -121,14 +166,22 @@ ImageMap *ImageMapCache::GetImageMap(const string &fileName, const ImageMapConfi
 		resizePolicyToApply.push_back(false);
 	}
 	
+	imgMapCache_mutex.lock();
+
 	mapByKey.insert(make_pair(key, im));
 	mapNames.push_back(fileName);
 	maps.push_back(im);
+
+	//Bartek
+	imgMapCache_mutex.unlock();
+
 
 	return im;
 }
 
 void ImageMapCache::DefineImageMap(ImageMap *im) {
+	//Bartek
+	const std::lock_guard<std::mutex> lock(imgMapCache_mutex);
 	const string &name = im->GetName();
 
 	SDL_LOG("Define ImageMap: " << name);
@@ -160,6 +213,8 @@ void ImageMapCache::DefineImageMap(ImageMap *im) {
 }
 
 void ImageMapCache::DeleteImageMap(const ImageMap *im) {
+	//Bartek
+	const std::lock_guard<std::mutex> lock(imgMapCache_mutex);
 	for (boost::unordered_map<std::string, ImageMap *>::iterator it = mapByKey.begin(); it != mapByKey.end(); ++it) {
 		if (it->second == im) {
 			delete it->second;

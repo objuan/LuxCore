@@ -189,6 +189,7 @@ public:
 	const unsigned int GetObjectCount() const;
 
 	void Parse(const luxrays::Properties &props);
+	void WaitReady();
 
 	void DuplicateObject(const std::string &srcObjName, const std::string &dstObjName,
 			const float transMat[16], const unsigned int objectID);

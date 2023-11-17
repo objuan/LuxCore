@@ -87,18 +87,253 @@
 #include "slg/textures/wrinkled.h"
 #include "slg/textures/uv.h"
 #include "slg/textures/triplanar.h"
+#include "slg/scene/TextureLoadingThread.h"
+
 
 using namespace std;
 using namespace luxrays;
 using namespace slg;
 using namespace slg::blender;
 
-void Scene::ParseTextures(const Properties &props) {
+typedef slg::Texture* pTexture;
+
+//std::vector<pTexture> toUpdate;
+//std::vector<pTexture> toUpdate2;
+
+void Scene::LoadTexture(const Properties& props, const std::string& texName, int threadId)
+{
+	const string propName = "scene.textures." + texName;
+	const string name = props.Get(Property(propName + ".file")("image.png")).Get<string>();
+
+	SDL_LOG("[TH" << threadId << "] Texture task load: " << texName << " " << name);
+	textureLoadingThread->lockTexturePath(name, threadId);
+
+	ImageMap* im = imgMapCache.GetImageMap(name, ImageMapConfig(props, propName), true);
+
+	const bool randomizedTiling = props.Get(Property(propName + ".randomizedtiling.enable")(false)).Get<bool>();
+	if (randomizedTiling && (im->GetStorage()->wrapType != ImageMapStorage::REPEAT))
+		throw runtime_error("Randomized tiling requires REPEAT wrap type in imagemap texture: " + propName);
+
+	const float gain = props.Get(Property(propName + ".gain")(1.f)).Get<float>();
+	Texture* tex = ImageMapTexture::AllocImageMapTexture(texName, imgMapCache, im,
+		CreateTextureMapping2D(propName + ".mapping", props),
+		gain, randomizedTiling);
+
+	// 
+//	if (texDefs.IsTextureDefined(texName)) {
+	//const Texture* oldTex = texDefs.GetTexture(texName);
+
+	// FresnelTexture can be replaced only with other FresnelTexture
+	//if (dynamic_cast<const FresnelTexture*>(oldTex) && !dynamic_cast<const FresnelTexture*>(tex))
+	//	throw runtime_error("You can not replace a fresnel texture with the texture: " + texName);
+
+//	texDefs.DefineTexture(tex);
+//	matDefs.UpdateTextureReferences(oldTex, tex);
+
+	
+	textureLoadingThread->toUpdate->push_back(tex);
+//toUpdate2.push_back(oldTex);
+
+//	
+//	}
+//	else
+//	{
+//	texDefs.DefineTexture(tex);
+
+//	}
+	textureLoadingThread->unlockTexturePath(threadId);
+	SDL_LOG("[TH" << threadId << "] Texture task load done: " << texName);
+}
+
+// ================
+// 
+
+void TextureLoadingTask::load(int threadId)
+{
+	scene->LoadTexture(props, txtName, threadId);
+}
+
+
+void TextureLoadingThread::lockTexturePath(const std::string &txtPath, int threadId)
+{
+	bool hasToWait = false;
+	while (ancora)
+	{
+		hasToWait = false;
+		txtPathsMutex.lock();
+		for (int i = 0; i < threadCount; i++)
+			if (txtPaths[i] == txtPath)
+				hasToWait = true;
+
+
+		if (hasToWait)
+		{
+			txtPathsMutex.unlock();
+			SDL_LOG("waiting for other thread to load texture: " << txtPath);
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+		}
+		else
+		{
+			txtPaths[threadId] = txtPath;
+			txtPathsMutex.unlock();
+			break;
+		}
+
+
+	}
+}
+
+void TextureLoadingThread::unlockTexturePath(int threadId)
+{
+	txtPathsMutex.lock();
+	txtPaths[threadId] = "";
+	txtPathsMutex.unlock();
+}
+
+
+// =========================
+
+TextureLoadingThread::TextureLoadingThread(slg::Scene* scene) : scene(scene)
+{
+	ancora = true;
+	toUpdate = new std::vector<slg::Texture*>();
+	waitingCount = 0;
+	toUpdate->clear();
+
+	for (int i = 0; i < threadCount; i++)
+	{
+		SDL_LOG("Starting thread: " << i);
+		thread[i] = new boost::thread(boost::bind(&TextureLoadingThread::run, this, i));
+		txtPaths[i] = "";
+	}
+}
+
+TextureLoadingThread::~TextureLoadingThread()
+{
+	ancora = false;
+	boost::this_thread::sleep_for(boost::chrono::milliseconds(2000));
+	delete toUpdate;
+	for (int i = 0; i < threadCount; i++)
+		delete thread[i];
+}
+
+void TextureLoadingThread::push(const luxrays::Properties& props, const std::string& txtName) {
+	luxrays::Properties p;
+	p.Set(props);
+	mtx_.lock();
+	taskList.push_back(new TextureLoadingTask(0, scene, p, txtName));
+	waitingCount++;
+	SDL_LOG("Push txt to load: " << txtName << " count: " << waitingCount);
+	mtx_.unlock();
+}
+
+void TextureLoadingThread::process()
+{
+	/*BOOST_FOREACH(TextureLoadingTask * task, taskList) {
+		task.load();
+	}
+	taskList.clear();*/
+}
+void TextureLoadingThread::run(int threadId)
+{
+	SDL_LOG("Search thread id");
+/*	int threadId;
+	for (int i = 0; i < threadCount; i++)
+		if (thread[i]->get_id() == boost::this_thread::get_id())
+			threadId = i;*/
+
+	SDL_LOG("Thread id is: " << threadId);
+
+	while (ancora)
+	{
+		
+		TextureLoadingTask *task=NULL;
+		mtx_.lock();
+		if (taskList.size() > 0)
+		{
+			task = taskList[taskList.size() - 1];
+			taskList.pop_back();
+		}
+		mtx_.unlock();
+		if (task != NULL)
+		{
+			task->load(threadId);
+			waitingCount--;
+			SDL_LOG("[TH" << threadId << "] Pop txt: " << task->txtName << " count: " << waitingCount);
+			delete task;
+		}
+		
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+	}
+
+}
+void TextureLoadingThread::waitEnd()
+{
+	int i = 0;
+	while (ancora && waitingCount > 0)
+	{
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+		i++;
+		if (i == 100)
+		{
+			i = 0;
+			SDL_LOG("Waiting count: " << waitingCount);
+		}
+	}
+	
+	for(int i = 0; i < toUpdate->size(); i++)
+	{
+		if (!ancora) break;
+
+		const Texture* oldTex = scene->texDefs.GetTexture((*toUpdate)[i]->GetName());
+
+		scene->texDefs.DefineTexture((*toUpdate)[i]);
+		scene->matDefs.UpdateTextureReferences(oldTex, (*toUpdate)[i]);
+
+		SDL_LOG("Updating " + (*toUpdate)[i]->GetName() );
+
+	}
+
+	toUpdate->clear();
+
+	scene->editActions.AddActions(MATERIALS_EDIT | MATERIAL_TYPES_EDIT);
+
+	SDL_LOG("==== Texture LOADING READY : ==== " );
+}
+
+//	
+void Scene::CreateTextureThread(const std::string& texName, const luxrays::Properties& props)
+{
+	Texture* tex = CreateTexture(texName, props);
+	// Density grid data are stored with image maps
+	if ((tex->GetType() == IMAGEMAP) || (tex->GetType() == DENSITYGRID_TEX))
+		editActions.AddAction(IMAGEMAPS_EDIT);
+
+	if (texDefs.IsTextureDefined(texName)) {
+		// A replacement for an existing texture
+		const Texture* oldTex = texDefs.GetTexture(texName);
+
+		// FresnelTexture can be replaced only with other FresnelTexture
+		if (dynamic_cast<const FresnelTexture*>(oldTex) && !dynamic_cast<const FresnelTexture*>(tex))
+			throw runtime_error("You can not replace a fresnel texture with the texture: " + texName);
+
+		texDefs.DefineTexture(tex);
+		matDefs.UpdateTextureReferences(oldTex, tex);
+	}
+	else {
+		// Only a new texture
+		texDefs.DefineTexture(tex);
+	}
+}
+
+void Scene::ParseTextures(const luxrays::Properties &props) {
 	vector<string> texKeys = props.GetAllUniqueSubNames("scene.textures");
 	if (texKeys.size() == 0) {
 		// There are not texture definitions
 		return;
 	}
+
+	// MULTITHREAD ?? 
 
 	BOOST_FOREACH(const string &key, texKeys) {
 		// Extract the texture name
@@ -113,11 +348,70 @@ void Scene::ParseTextures(const Properties &props) {
 		}
 
 		Texture *tex = CreateTexture(texName, props);
+
 		// Density grid data are stored with image maps
 		if ((tex->GetType() == IMAGEMAP) || (tex->GetType() == DENSITYGRID_TEX))
 			editActions.AddAction(IMAGEMAPS_EDIT);
 
+
 		if (texDefs.IsTextureDefined(texName)) {
+			// A replacement for an existing texture
+			const Texture* oldTex = texDefs.GetTexture(texName);
+
+			// FresnelTexture can be replaced only with other FresnelTexture
+			if (dynamic_cast<const FresnelTexture*>(oldTex) && !dynamic_cast<const FresnelTexture*>(tex))
+				throw runtime_error("You can not replace a fresnel texture with the texture: " + texName);
+
+
+			bool loadInThread = false;
+
+			const string propName = "scene.textures." + texName;
+			const string texType = props.Get(Property(propName + ".type")("imagemap")).Get<string>();
+			if (texType == "imagemap")
+			{
+				const string name = props.Get(Property(propName + ".file")("image.png")).Get<string>();
+				ImageMap* im = imgMapCache.Find(name, ImageMapConfig(props, propName));
+				if (im == NULL)
+				{
+					textureLoadingThread->push(props, texName);
+					loadInThread = true;
+				}
+				else
+				{
+					const bool randomizedTiling = props.Get(Property(propName + ".randomizedtiling.enable")(false)).Get<bool>();
+					if (randomizedTiling && (im->GetStorage()->wrapType != ImageMapStorage::REPEAT))
+						throw runtime_error("Randomized tiling requires REPEAT wrap type in imagemap texture: " + propName);
+
+					const float gain = props.Get(Property(propName + ".gain")(1.f)).Get<float>();
+					tex = ImageMapTexture::AllocImageMapTexture(texName, imgMapCache, im,
+						CreateTextureMapping2D(propName + ".mapping", props),
+						gain, randomizedTiling);
+				}
+			}
+
+			if (!loadInThread)
+			{
+				texDefs.DefineTexture(tex);
+				matDefs.UpdateTextureReferences(oldTex, tex);
+			}
+		}
+		else {
+			// Only a new texture
+			SDL_LOG("Txture new: " << tex->GetName());
+			texDefs.DefineTexture(tex);
+
+			if (true)
+			{
+				const string propName = "scene.textures." + texName;
+				const string texType = props.Get(Property(propName + ".type")("imagemap")).Get<string>();
+				if (texType == "imagemap")
+				{
+					textureLoadingThread->push(props, texName);
+				}
+			}
+		}
+
+		/*if (texDefs.IsTextureDefined(texName)) {
 			// A replacement for an existing texture
 			const Texture *oldTex = texDefs.GetTexture(texName);
 
@@ -130,7 +424,8 @@ void Scene::ParseTextures(const Properties &props) {
 		} else {
 			// Only a new texture
 			texDefs.DefineTexture(tex);
-		}
+		}*/
+		
 	}
 
 	editActions.AddActions(MATERIALS_EDIT | MATERIAL_TYPES_EDIT);
@@ -144,16 +439,34 @@ Texture *Scene::CreateTexture(const string &texName, const Properties &props) {
 	if (texType == "imagemap") {
 		const string name = props.Get(Property(propName + ".file")("image.png")).Get<string>();
 
-		ImageMap *im = imgMapCache.GetImageMap(name, ImageMapConfig(props, propName), true);
+		// load from disk
+		
+		if (false)
+		{
+			ImageMap* im = imgMapCache.GetImageMap(name, ImageMapConfig(props, propName), true);
 
-		const bool randomizedTiling = props.Get(Property(propName + ".randomizedtiling.enable")(false)).Get<bool>();
-		if (randomizedTiling && (im->GetStorage()->wrapType != ImageMapStorage::REPEAT))
-			throw runtime_error("Randomized tiling requires REPEAT wrap type in imagemap texture: " + propName);
+			const bool randomizedTiling = props.Get(Property(propName + ".randomizedtiling.enable")(false)).Get<bool>();
+			if (randomizedTiling && (im->GetStorage()->wrapType != ImageMapStorage::REPEAT))
+				throw runtime_error("Randomized tiling requires REPEAT wrap type in imagemap texture: " + propName);
 
-		const float gain = props.Get(Property(propName + ".gain")(1.f)).Get<float>();
-		tex = ImageMapTexture::AllocImageMapTexture(texName, imgMapCache, im,
+			const float gain = props.Get(Property(propName + ".gain")(1.f)).Get<float>();
+			tex = ImageMapTexture::AllocImageMapTexture(texName, imgMapCache, im,
 				CreateTextureMapping2D(propName + ".mapping", props),
 				gain, randomizedTiling);
+		}
+		else
+		{
+			// dummy txt
+			float v = props.Get(Property(propName + ".value")(1.f)).Get<float>();
+
+			ColorSpaceConfig colorCfg;
+			ColorSpaceConfig::FromProperties(props, propName, colorCfg, ColorSpaceConfig::defaultNopConfig);
+			colorSpaceConv.ConvertFrom(colorCfg, v);
+			tex = new ConstFloatTexture(v);
+			//SDL_LOG("Fake Texture created: " << texName);
+
+		}
+
 	} else if (texType == "constfloat1") {
 		float v = props.Get(Property(propName + ".value")(1.f)).Get<float>();
 		

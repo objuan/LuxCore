@@ -20,15 +20,20 @@
 
 #include "slg/textures/texturedefs.h"
 
+std::mutex txt_mutex;
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
+
+
 
 //------------------------------------------------------------------------------
 // TextureDefinitions
 //------------------------------------------------------------------------------
 
 void TextureDefinitions::DefineTexture(Texture *newTex) {
+	std::lock_guard<std::mutex> lock(txt_mutex);
 	const Texture *oldTex = static_cast<const Texture *>(texs.DefineObj(newTex));
 
 	if (oldTex) {

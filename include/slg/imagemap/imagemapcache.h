@@ -29,6 +29,8 @@
 #include "slg/imagemap/resizepolicies/resizepolicies.h"
 #include "slg/core/sdl.h"
 
+extern std::mutex imgMapCache_mutex;
+
 namespace slg {
 
 class Scene;
@@ -47,6 +49,8 @@ public:
 
 	void DefineImageMap(ImageMap *im);
 
+	ImageMap* Find(const std::string& fileName, const ImageMapConfig& imgCfg);
+
 	ImageMap *GetImageMap(const std::string &fileName, const ImageMapConfig &imgCfg,
 			const bool applyResizePolicy);
 
@@ -56,8 +60,14 @@ public:
 	u_int GetImageMapIndex(const ImageMap *im) const;
 
 	void GetImageMaps(std::vector<const ImageMap *> &ims);
-	u_int GetSize()const { return static_cast<u_int>(mapByKey.size()); }
-	bool IsImageMapDefined(const std::string &name) const { return mapByKey.find(name) != mapByKey.end(); }
+	u_int GetSize()const {
+		const std::lock_guard<std::mutex> lock(imgMapCache_mutex);
+		return static_cast<u_int>(mapByKey.size()); 
+	}
+	bool IsImageMapDefined(const std::string &name) const { 
+		const std::lock_guard<std::mutex> lock(imgMapCache_mutex);
+		return mapByKey.find(name) != mapByKey.end(); 
+	}
 
 	friend class Scene;
 	friend class ImageMapResizePolicy;
