@@ -3,6 +3,7 @@
 #include "ConvolutionFFT.h"
 
 #include <omp.h>
+#include <cstring>
 
 void* MemoryManager::memory;
 int MemoryManager::maxSize;
@@ -18,7 +19,7 @@ void* MemoryManager::_malloc(int m) {
 
         int newSize = maxSize * 2;
         void* new_memory = malloc(newSize);
-        memcpy(new_memory, memory, maxSize);
+        std::memcpy(new_memory, memory, maxSize);
         maxSize = newSize;
         free(memory);
         memory = new_memory;
@@ -46,14 +47,14 @@ namespace RealBloom
             //m_status.setFftStage(strFormat("%u/%u %s: Input FFT", currStage, numStages, strFromColorChannelID(i).c_str()));
             fftConv->inputFFT(index);
 
-            //    if (m_status.mustCancel()) throw std::exception();
+            //    if (m_status.mustCancel()) throw std::runtime_error();
 
                 // Kernel FFT
          //   currStage++;
           //  m_status.setFftStage(strFormat("%u/%u %s: Kernel FFT", currStage, numStages, strFromColorChannelID(i).c_str()));
             fftConv->kernelFFT(index);
 
-            //  if (m_status.mustCancel()) throw std::exception();
+            //  if (m_status.mustCancel()) throw std::runtime_error();
 
               // Define the name of the arithmetic operation based on deconvolve
          /*   std::string arithmeticName =
@@ -66,7 +67,7 @@ namespace RealBloom
               //  m_status.setFftStage(strFormat("%u/%u %s: %s", currStage, numStages, strFromColorChannelID(i).c_str(), arithmeticName.c_str()));
             fftConv->multiplyOrDivide(index);
 
-            //   if (m_status.mustCancel()) throw std::exception();
+            //   if (m_status.mustCancel()) throw std::runtime_error();
 
                // Inverse FFT
             //currStage++;
@@ -153,7 +154,8 @@ namespace RealBloom
     {
         float threshold = m_params.threshold;
         float transKnee = transformKnee(m_params.knee);
-        std::atomic_uint64_t numPixels = 0;
+  //      std::atomic_uint64_t numPixels = 0;
+        uint64_t numPixels = 0;
 
         {
             // Input image
@@ -167,7 +169,7 @@ namespace RealBloom
             m_imgConvPreview->resize(inputWidth, inputHeight, false);
             float* prevBuffer = m_imgConvPreview->getImageData();
 
-#pragma omp parallel for
+//#pragma omp parallel for
             for (int y = 0; y < inputHeight; y++)
             {
                 for (int x = 0; x < inputWidth; x++)
@@ -581,7 +583,7 @@ namespace RealBloom
             m_status.setFftStage(strFormat("%u/%u Preparing", currStage, numStages));
             fftConv.pad();
 
-            //  if (m_status.mustCancel()) throw std::exception();
+            //  if (m_status.mustCancel()) throw std::runtime_error();
 
            /* MyConvolutionThread* threads[3];
             for (int i = 0; i < 3; i++)
@@ -608,14 +610,14 @@ namespace RealBloom
                 m_status.setFftStage(strFormat("%u/%u %s: Input FFT", currStage, numStages, strFromColorChannelID(i).c_str()));
                 fftConv.inputFFT(i);
 
-                //    if (m_status.mustCancel()) throw std::exception();
+                //    if (m_status.mustCancel()) throw std::runtime_error();
 
                     // Kernel FFT
                 currStage++;
                 m_status.setFftStage(strFormat("%u/%u %s: Kernel FFT", currStage, numStages, strFromColorChannelID(i).c_str()));
                 fftConv.kernelFFT(i);
 
-                //  if (m_status.mustCancel()) throw std::exception();
+                //  if (m_status.mustCancel()) throw std::runtime_error();
 
                   // Define the name of the arithmetic operation based on deconvolve
                 std::string arithmeticName =
@@ -628,14 +630,14 @@ namespace RealBloom
                 m_status.setFftStage(strFormat("%u/%u %s: %s", currStage, numStages, strFromColorChannelID(i).c_str(), arithmeticName.c_str()));
                 fftConv.multiplyOrDivide(i);
 
-                //   if (m_status.mustCancel()) throw std::exception();
+                //   if (m_status.mustCancel()) throw std::runtime_error();
 
                    // Inverse FFT
                 currStage++;
                 m_status.setFftStage(strFormat("%u/%u %s: Inverse FFT", currStage, numStages, strFromColorChannelID(i).c_str()));
                 fftConv.inverse(i);
 
-                // if (m_status.mustCancel()) throw std::exception();
+                // if (m_status.mustCancel()) throw std::runtime_error();
             }
 
             //for (int i = 0; i < 3; i++)
@@ -659,7 +661,7 @@ namespace RealBloom
             }
             //MemoryManager::Dispose();
         }
-        catch (const std::exception& e)
+        catch (const std::runtime_error& e)
         {
             //  m_status.setError(e.what());
         }

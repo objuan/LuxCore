@@ -16,14 +16,14 @@ CmfTable::CmfTable(std::string filename)
         {
             filename = CMF_DIR + filename;
             if (!boost::filesystem::exists(filename))
-                throw std::exception("File does not exist.");
+                throw std::runtime_error("File does not exist.");
         }
 
         // Read the CSV file
         rapidcsv::Document doc(filename, rapidcsv::LabelParams(-1, -1));
 
         if (doc.GetColumnCount() < 4)
-            throw std::exception("At least 4 columns are required (wavelength, X, Y, Z).");
+            throw std::runtime_error("At least 4 columns are required (wavelength, X, Y, Z).");
 
         // Get the wavelength info
         std::vector<float> wavelengths = doc.GetColumn<float>(0);
@@ -31,7 +31,7 @@ CmfTable::CmfTable(std::string filename)
         // This is kind of arbitrary but what would you use
         // a CMF table with less than 10 entries for
         if (wavelengths.size() < 10)
-            throw std::exception(
+            throw std::runtime_error(
                 strFormat("At least 10 entries are needed. (%u)", wavelengths.size()).c_str()
             );
 
@@ -42,7 +42,7 @@ CmfTable::CmfTable(std::string filename)
 
         // start + (step * (count - 1)) == end
         if (fabsf((m_start + (m_step * (float)(m_count - 1))) - m_end) >= m_step)
-            throw std::exception(strFormat(
+            throw std::runtime_error(strFormat(
                 "Wavelength entries must be equally distanced from each other. "
                 "(%u, %.3f, %.3f, %.3f)",
                 m_count,
@@ -61,7 +61,7 @@ CmfTable::CmfTable(std::string filename)
             (m_valuesY.size() == m_count) &&
             (m_valuesZ.size() == m_count)))
         {
-            throw std::exception(strFormat(
+            throw std::runtime_error(strFormat(
                 "The first 4 columns must have the same number of entries. "
                 "(%u, %u, %u, %u)",
                 m_count,
@@ -71,9 +71,9 @@ CmfTable::CmfTable(std::string filename)
             ).c_str());
         }
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(makeError(__FUNCTION__, "", e.what()).c_str());
+        throw std::runtime_error(makeError(__FUNCTION__, "", e.what()).c_str());
     }
 }
 
@@ -172,7 +172,7 @@ void CmfTable::sampleRGB(size_t numSamples, bool normalize, std::vector<float>& 
 
         XyzConversionInfo info = CmXYZ::getConversionInfo();
         if (info.method == XyzConversionMethod::None)
-            throw std::exception("An XYZ conversion method was not specified.");
+            throw std::runtime_error("An XYZ conversion method was not specified.");
 
         OCIO::PackedImageDesc img(
             outSamples.data(),
@@ -253,9 +253,9 @@ void CmfTable::sampleRGB(size_t numSamples, bool normalize, std::vector<float>& 
             }
         }
     }
-    catch (std::exception& e)
+    catch (std::runtime_error& e)
     {
-        throw std::exception(makeError(__FUNCTION__, stage, e.what(), true).c_str());
+        throw std::runtime_error(makeError(__FUNCTION__, stage, e.what(), true).c_str());
     }
 }
 
@@ -275,7 +275,7 @@ void CMF::retrieveTables()
     S_VARS.tables.clear();
 
     if (!(boost::filesystem::exists(CMF_DIR) && boost::filesystem::is_directory(CMF_DIR)))
-        throw std::exception(strFormat("\"%s\" was not found.", CMF_DIR.c_str()).c_str());
+        throw std::runtime_error(strFormat("\"%s\" was not found.", CMF_DIR.c_str()).c_str());
 
     for (const auto& entry : boost::filesystem::directory_iterator(CMF_DIR))
     {
@@ -298,7 +298,7 @@ bool CMF::init()
     {
         retrieveTables();
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
         S_STATUS.setError(makeError(__FUNCTION__, "", e.what(), true));
     }
@@ -373,7 +373,7 @@ void CMF::setActiveTable(const CmfTableInfo& tableInfo)
             );
         }
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
         S_VARS.activeTable = nullptr;
         S_STATUS.setError(e.what());

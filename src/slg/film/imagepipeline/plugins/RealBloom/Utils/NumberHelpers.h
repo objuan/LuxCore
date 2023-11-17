@@ -1,7 +1,11 @@
 #pragma once
 
 #include <algorithm>
+#ifdef WINDOWS
 #include <numbers>
+#else
+#define INT_MAX       2147483647
+#endif
 #include <complex>
 #include <cstdint>
 #include <cmath>

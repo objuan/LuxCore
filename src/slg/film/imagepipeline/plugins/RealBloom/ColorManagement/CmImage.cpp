@@ -254,7 +254,7 @@ void CmImage::moveToGPU_Internal()
             false);
         lastResult = true;
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
         printError(__FUNCTION__, "", e.what());
         lastResult = false;
@@ -277,9 +277,9 @@ void CmImage::applyViewTransform(
     {
         CMS::ensureOK();
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(makeError(__FUNCTION__, "", e.what()).c_str());
+        throw std::runtime_error(makeError(__FUNCTION__, "", e.what()).c_str());
     }
 
     uint32_t size = width * height * 4;
@@ -313,9 +313,9 @@ void CmImage::applyViewTransform(
 
             CMS::getCpuProcessor()->apply(img);
         }
-        catch (std::exception& e)
+        catch (std::runtime_error& e)
         {
-            throw std::exception(makeError(__FUNCTION__, "Color Transform (CPU)", e.what()).c_str());
+            throw std::runtime_error(makeError(__FUNCTION__, "Color Transform (CPU)", e.what()).c_str());
         }
     }
 

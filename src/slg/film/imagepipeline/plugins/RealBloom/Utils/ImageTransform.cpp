@@ -374,7 +374,7 @@ void ImageTransform::apply(
     // Verify the input size
     uint32_t inputBufferSize = inputWidth * inputHeight * 4;
     if ((inputBuffer.size() != inputBufferSize) || (inputBuffer.size() < 1))
-        throw std::exception(makeError(__FUNCTION__, "", "Invalid input buffer size").c_str());
+        throw std::runtime_error(makeError(__FUNCTION__, "", "Invalid input buffer size").c_str());
 
     // Clear the output buffer
     clearVector(outputBuffer);

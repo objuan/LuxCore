@@ -17,7 +17,9 @@
 //#include "StreamUtils.h"
 
 #define NOMINMAX
+#ifdef WINDOWS
 #include <Windows.h>
+#endif
 
 #define DELPTR(PTR) if (PTR) { delete PTR; PTR = nullptr; }
 #define DELARR(PTR) if (PTR) { delete[] PTR; PTR = nullptr; }
@@ -101,11 +103,11 @@ uint32_t getDefNumThreads();
 float getElapsedMs(std::chrono::system_clock::time_point startTime);
 float getElapsedMs(std::chrono::system_clock::time_point startTime, std::chrono::system_clock::time_point endTime);
 
-HANDLE createMutex(const std::string& name);
-HANDLE openMutex(const std::string& name);
-void waitForMutex(HANDLE hMutex);
-void releaseMutex(HANDLE hMutex);
-void closeMutex(HANDLE& hMutex);
+//HANDLE createMutex(const std::string& name);
+//HANDLE openMutex(const std::string& name);
+//void waitForMutex(HANDLE hMutex);
+//void releaseMutex(HANDLE hMutex);
+//void closeMutex(HANDLE& hMutex);
 
 const std::string& getPathSeparator();
 const std::string& getExecDir();
@@ -115,6 +117,6 @@ std::string getLocalPath(const std::string& path);
 std::string getFileExtension(const std::string& filename);
 bool deleteFile(const std::string& filename);
 
-void killProcess(PROCESS_INFORMATION pi);
-bool processIsRunning(PROCESS_INFORMATION pi);
+//void killProcess(PROCESS_INFORMATION pi);
+//bool processIsRunning(PROCESS_INFORMATION pi);
 void openURL(std::string url);

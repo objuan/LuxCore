@@ -79,6 +79,7 @@ float getElapsedMs(std::chrono::system_clock::time_point startTime, std::chrono:
     return (float)elapsedNs / 1000000.0f;
 }
 
+/*
 HANDLE createMutex(const std::string& name)
 {
     return CreateMutexA(
@@ -114,7 +115,7 @@ void closeMutex(HANDLE& hMutex)
         CloseHandle(hMutex);
         hMutex = NULL;
     }
-}
+}*/
 
 const std::string& getPathSeparator()
 {
@@ -124,9 +125,9 @@ const std::string& getPathSeparator()
 
 const std::string& getExecDir()
 {
-    static std::string execDir = "";
+    static std::string execDir = "/mnt/z/RealBloom/";
 
-    if (execDir.empty())
+    /*if (execDir.empty())
     {
         char path_cstr[2048] = { 0 };
         GetModuleFileNameA(NULL, path_cstr, 2048);
@@ -138,12 +139,12 @@ const std::string& getExecDir()
             execDir += getPathSeparator();
 
         execDir = boost::filesystem::path(execDir).make_preferred().string();
-    }
+    }*/
 
     return execDir;
 }
 
-const std::string& getTempDirectory()
+/*const std::string& getTempDirectory()
 {
     static std::string tempDir = "";
 
@@ -157,7 +158,7 @@ const std::string& getTempDirectory()
     }
 
     return tempDir;
-}
+}*/
 
 std::string getLocalPath(const std::string& path)
 {
@@ -177,7 +178,7 @@ bool deleteFile(const std::string& filename)
     return true;
 }
 
-void killProcess(PROCESS_INFORMATION pi)
+/*void killProcess(PROCESS_INFORMATION pi)
 {
     if (TerminateProcess(pi.hProcess, 1))
         WaitForSingleObject(pi.hProcess, INFINITE);
@@ -189,7 +190,7 @@ bool processIsRunning(PROCESS_INFORMATION pi)
     if (GetExitCodeProcess(pi.hProcess, &exitCode))
         return exitCode == STILL_ACTIVE;
     return false;
-}
+}*/
 
 void openURL(std::string url)
 {

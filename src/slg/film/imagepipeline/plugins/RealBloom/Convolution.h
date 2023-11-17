@@ -11,7 +11,9 @@
 #include <iostream>
 #include <fstream>
 #include <atomic>
-
+#ifndef WINDOWS
+#include <stdio.h>
+#endif
 //#include "GpuHelper.h"
 //#include "Binary/BinaryData.h"
 //#include "Binary/BinaryConvNaiveGpu.h"

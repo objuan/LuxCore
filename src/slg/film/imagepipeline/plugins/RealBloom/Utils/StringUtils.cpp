@@ -236,10 +236,11 @@ std::string strFromTime()
     char buffer[128];
 
     time(&rawtime);
-    localtime_s(&timeinfo, &rawtime);
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    //localtime_s(&timeinfo, &rawtime);
+    //strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
 
-    return std::string(buffer);
+    //return std::string(buffer);
+	return "";
 }
 
 std::string strFromInt(int64_t v)
@@ -258,9 +259,9 @@ int64_t strToInt(const std::string& s)
     {
         return std::stoll(s);
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(strFormat("Couldn't parse an integer from \"%s\".", s.c_str()).c_str());
+        throw std::runtime_error(strFormat("Couldn't parse an integer from \"%s\".", s.c_str()).c_str());
     }
 }
 
@@ -270,9 +271,9 @@ float strToFloat(const std::string& s)
     {
         return std::stof(s);
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(strFormat("Couldn't parse a float from \"%s\".", s.c_str()).c_str());
+        throw std::runtime_error(strFormat("Couldn't parse a float from \"%s\".", s.c_str()).c_str());
     }
 }
 
@@ -281,7 +282,7 @@ std::array<float, 4> strToRGBA(const std::string& s)
     try
     {
         if (s.empty())
-            throw std::exception("empty string");
+            throw std::runtime_error("empty string");
 
         std::vector<std::string> elements;
         strSplit(s, ',', elements);
@@ -299,11 +300,11 @@ std::array<float, 4> strToRGBA(const std::string& s)
         {
             return { std::stof(elements[0]), std::stof(elements[1]), std::stof(elements[2]), std::stof(elements[3]) };
         }
-        throw std::exception("invalid input");
+        throw std::runtime_error("invalid input");
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(strFormat("Failed to parse color from string \"%s\": %s", s.c_str(), e.what()).c_str());
+        throw std::runtime_error(strFormat("Failed to parse color from string \"%s\": %s", s.c_str(), e.what()).c_str());
     }
 }
 
@@ -318,7 +319,7 @@ std::array<float, 2> strToXY(const std::string& s)
     try
     {
         if (s.empty())
-            throw std::exception("empty string");
+            throw std::runtime_error("empty string");
 
         std::vector<std::string> elements;
         strSplit(s, ',', elements);
@@ -332,10 +333,10 @@ std::array<float, 2> strToXY(const std::string& s)
         {
             return { std::stof(elements[0]), std::stof(elements[1]) };
         }
-        throw std::exception("invalid input");
+        throw std::runtime_error("invalid input");
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
-        throw std::exception(strFormat("Failed to parse XY from string \"%s\": %s", s.c_str(), e.what()).c_str());
+        throw std::runtime_error(strFormat("Failed to parse XY from string \"%s\": %s", s.c_str(), e.what()).c_str());
     }
 }

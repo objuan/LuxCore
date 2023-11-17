@@ -13,6 +13,9 @@
 #include <clocale>
 #include <ctime>
 #include <cstdint>
+#ifndef WINDOWS
+#include <cmath>
+#endif
 
 template<typename ... Args>
 std::string strFormat(const std::string& format, Args ... args)

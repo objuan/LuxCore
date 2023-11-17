@@ -1,7 +1,7 @@
 #include "CMS.h"
 
-std::string CMS::CONFIG_PATH = getLocalPath("realBloom/ocio/config.ocio");
-std::string CMS::INTERNAL_CONFIG_PATH = getLocalPath("realBloom/assets/internal/ocio/config.ocio");
+std::string CMS::CONFIG_PATH = getLocalPath("ocio/config.ocio");
+std::string CMS::INTERNAL_CONFIG_PATH = getLocalPath("assets/internal/ocio/config.ocio");
 std::string CMS::INTERNAL_XYZ_IE = "Linear CIE-XYZ I-E";
 bool CMS::USE_GPU = false;
 
@@ -120,7 +120,7 @@ bool CMS::init()
         S_VARS.retrieveViews();
         S_VARS.retrieveLooks();
     }
-    catch (std::exception& e)
+    catch (std::runtime_error& e)
     {
         S_STATUS.setError(makeError(__FUNCTION__, stage, e.what(), true));
     }
@@ -295,7 +295,7 @@ void CMS::updateProcessors()
         //    S_VARS.shader = std::make_shared<OcioShader>(shaderDesc);
         //}
     }
-    catch (const std::exception& e)
+    catch (const std::runtime_error& e)
     {
         S_STATUS.setError(makeError(__FUNCTION__, "", e.what(), true));
     }
@@ -335,7 +335,7 @@ const BaseStatus& CMS::getStatus()
 void CMS::ensureOK()
 {
     if (!S_STATUS.isOK())
-        throw std::exception(strFormat("CMS failure: %s", S_STATUS.getError().c_str()).c_str());
+        throw std::runtime_error(strFormat("CMS failure: %s", S_STATUS.getError().c_str()).c_str());
 }
 
 bool CMS::usingGPU()
@@ -402,7 +402,7 @@ std::array<float, 4> CMS::getDisplayColor(std::array<float, 4> v)
 
         return v;
     }
-    catch (std::exception& e) {}
+    catch (std::runtime_error& e) {}
 
     return { 0, 0, 0, 1 };
 }
