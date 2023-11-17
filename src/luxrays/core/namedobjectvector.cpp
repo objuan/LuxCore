@@ -48,9 +48,11 @@ NamedObject *NamedObjectVector::DefineObj(NamedObject *newObj) {
 		const u_int index = GetIndex(name);
 		objs[index] = newObj;
 
+		// perche ??? 
 		name2index.left.erase(name);
 		name2index.insert(Name2IndexType::value_type(name, index));
 
+		// ok
 		index2obj.left.erase(index);
 		index2obj.insert(Index2ObjType::value_type(index, newObj));
 
@@ -135,13 +137,14 @@ void NamedObjectVector::GetNames(vector<string> &names) const {
 		names[i] = GetName(i);
 }
 
-vector<NamedObject *> &NamedObjectVector::GetObjs() {
+std::vector<NamedObject *> &NamedObjectVector::GetObjs() {
 	return objs;
 }
 
 void NamedObjectVector::DeleteObj(const string &name) {
 	const u_int index = GetIndex(name);
-
+	//objs.erase(objs.begin() + index);
+	// 
 	if (objs.size() > 0)
 	{
 		NamedObject* removedObj = objs[index];
@@ -152,7 +155,7 @@ void NamedObjectVector::DeleteObj(const string &name) {
 			int newIndex = index;
 			objs[index] = lastObj;
 
-			// redo links
+			// rifaccio collegamenti
 			name2index.left.erase(removedObj->GetName());
 			name2index.left.erase(lastObj->GetName());
 			name2index.insert(Name2IndexType::value_type(lastObj->GetName(), index));
@@ -164,14 +167,28 @@ void NamedObjectVector::DeleteObj(const string &name) {
 		}
 		else
 		{
-			// last
+			// ultimo
 			name2index.left.erase(removedObj->GetName());
 			index2obj.left.erase(index);
 		}
 	}
 
-	// remove last
+	// toglie l'ultimo 
+	//objs.pop();
 	objs.pop_back();
+
+	// I have to rebuild the indices from scratch
+	// SI PUO? OTTIMIZZARE !!!!percheè lo rifa tutto ? 
+
+	/*name2index.clear();
+	index2obj.clear();
+
+	for (u_int i = 0; i < objs.size(); ++i) {
+		NamedObject *obj = objs[i];
+
+		name2index.insert(Name2IndexType::value_type(obj->GetName(), i));
+		index2obj.insert(Index2ObjType::value_type(i, obj));	
+	}*/
 }
 
 void NamedObjectVector::DeleteObjs(const vector<string> &names) {
@@ -179,6 +196,30 @@ void NamedObjectVector::DeleteObjs(const vector<string> &names) {
 	for (const string& name : names) {
 		DeleteObj(name);
 	}
+	//vector<u_int> removeList;
+	//removeList.reserve(names.size());
+	//for (const string &name : names) {
+	//	if (IsObjDefined(name)) {
+	//		const u_int index = GetIndex(name);
+	//		removeList.push_back(index);
+	//	}
+	//}
+	//sort(removeList.begin(), removeList.end(), greater<u_int>());
+
+	//for (u_int i : removeList)
+	//	objs.eraseAt( i);
+	//	//objs.erase(objs.begin() + i);
+
+	//// I have to rebuild the indices from scratch
+	//name2index.clear();
+	//index2obj.clear();
+
+	//for (u_int i = 0; i < objs.size(); ++i) {
+	//	NamedObject *obj = objs[i];
+
+	//	name2index.insert(Name2IndexType::value_type(obj->GetName(), i));
+	//	index2obj.insert(Index2ObjType::value_type(i, obj));	
+	//}
 }
 
 template<class MapType> void PrintMap(const MapType &map, ostream &os) {

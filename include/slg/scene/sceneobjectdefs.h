@@ -49,6 +49,9 @@ public:
 	SceneObject *GetSceneObject(const std::string &name) {
 		std::vector<luxrays::NamedObject *> &v = objs.GetObjs();
 		return static_cast<SceneObject *>(v[objs.GetIndex(name)]);
+
+		//luxrays::FastVector<luxrays::NamedObject*>& v = objs.GetObjs();
+		//return static_cast<SceneObject *>(v[objs.GetIndex(name)]);
 	}
 	const SceneObject *GetSceneObject(const u_int index) const {
 		return static_cast<const SceneObject *>(objs.GetObj(index));
@@ -81,12 +84,16 @@ public:
 	void DeleteSceneObjects(const std::vector<std::string> &names) {
 		objs.DeleteObjs(names);
 	}
+
+	std::string ToString() const;
   
 private:
 	luxrays::NamedObjectVector objs;
 
-	// mapping mesh.name -> scene object list using it
+	// per accelerare il cambio reference
+	// mappatura mesh.name -> lista di scene object che la usano
 	boost::unordered_multimap<std::string, std::string> meshToSceneObjects;
+	//boost::unordered_multimap<std::string, std::string> materialToSceneObjects;
 };
 
 }
