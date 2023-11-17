@@ -226,13 +226,27 @@ bool EmbreeAccel::MeshPtrCompare(const Mesh *p0, const Mesh *p1) {
 }
 
 bool EmbreeAccel::Intersect(const Ray *ray, RayHit *hit) const {
-	RTCIntersectContext context;
-	rtcInitIntersectContext(&context);
-
-	RTCRayHit embreeRayHit;
-
+	
 	if (isnan(ray->o.x) || isnan(ray->o.y) || isnan(ray->o.z) || isnan(ray->d.x) || isnan(ray->d.y) || isnan(ray->d.z))
 		return false;
+
+	if (isinf(ray->o.x) || isinf(ray->o.y) || isinf(ray->o.z) || isinf(ray->d.x) || isinf(ray->d.y) || isinf(ray->d.z))
+		return false;
+
+	double max = 1000000;
+
+	if (ray->o.x > max || ray->o.y > max || ray->o.z > max || ray->d.x > max || ray->d.y > max || ray->d.z > max)
+		return false;
+	if (ray->o.x < -max || ray->o.y < -max || ray->o.z < -max || ray->d.x < -max || ray->d.y < -max || ray->d.z < -max)
+		return false;
+
+
+
+
+	RTCRayQueryContext context;
+	rtcInitRayQueryContext(&context);
+
+	RTCRayHit embreeRayHit;
 
 	embreeRayHit.ray.org_x = ray->o.x;
 	embreeRayHit.ray.org_y = ray->o.y;
@@ -246,13 +260,31 @@ bool EmbreeAccel::Intersect(const Ray *ray, RayHit *hit) const {
 	embreeRayHit.ray.tfar = ray->maxt;
 
 	embreeRayHit.ray.mask = 0xFFFFFFFF;
+//	embreeRayHit.ray.mask = -1;
+//	embreeRayHit.ray.mask = 0x1;
 	embreeRayHit.ray.time = (ray->time - minTime) * timeScale;
+	embreeRayHit.ray.flags = 0;
 
 	embreeRayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
 	embreeRayHit.hit.primID = RTC_INVALID_GEOMETRY_ID;
 	embreeRayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
-	
-	rtcIntersect1(embreeScene, &context, &embreeRayHit);
+
+	RTCIntersectArguments intersectArgs;
+	rtcInitIntersectArguments(&intersectArgs);
+	intersectArgs.context = &context;
+
+
+	rtcIntersect1(embreeScene, &embreeRayHit, &intersectArgs);
+
+	/*if (boost::this_thread::interruption_requested())
+	{
+		LR_LOG(ctx, "after embre intersect " << ray->o.x << " " << ray->o.y << " " << ray->o.z << " " << ray->d.x << " " << ray->d.y << " " << ray->d.z);
+		if (isnan(ray->o.x))
+			LR_LOG(ctx, "is NAN!!!!!!!!!!!!!!!!!");
+		if (isinf(ray->o.x))
+			LR_LOG(ctx, "is INF!!!!!!!!!!!!!!!!!");
+	}*/
+
 
 	if ((embreeRayHit.hit.geomID != RTC_INVALID_GEOMETRY_ID) &&
 			// A safety check in case of not enough numerical precision. Embree
