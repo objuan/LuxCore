@@ -91,7 +91,7 @@ void LuxLinearToneMap::Apply(Film &film, const u_int index) {
 // HardwareDevice version
 //------------------------------------------------------------------------------
 
-void LuxLinearToneMap::AddHWChannelsUsed(unordered_set<Film::FilmChannelType, hash<int> > &hwChannelsUsed) const {
+void LuxLinearToneMap::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
 	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
 }
 

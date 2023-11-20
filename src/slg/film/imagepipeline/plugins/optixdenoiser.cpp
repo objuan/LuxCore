@@ -60,7 +60,7 @@ ImagePipelinePlugin *OptixDenoiserPlugin::Copy() const {
 	return new OptixDenoiserPlugin(sharpness, minSPP);
 }
 
-void OptixDenoiserPlugin::AddHWChannelsUsed(unordered_set<Film::FilmChannelType, hash<int> > &hwChannelsUsed) const {
+void OptixDenoiserPlugin::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
 	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
 	hwChannelsUsed.insert(Film::ALBEDO);
 	hwChannelsUsed.insert(Film::AVG_SHADING_NORMAL);

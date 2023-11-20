@@ -209,6 +209,14 @@ public:
 		ret.c[1] = luxrays::Clamp(c[1], low, high);
 		ret.c[2] = luxrays::Clamp(c[2], low, high);
 		return ret;
+	}	
+	// nuovo
+	Color Clamp01() const {
+		Color ret;
+		ret.c[0] = luxrays::Clamp01(c[0]);
+		ret.c[1] = luxrays::Clamp01(c[1]);
+		ret.c[2] = luxrays::Clamp01(c[2]);
+		return ret;
 	}
 	Color ScaledClamp(float low = 0.f, float high = INFINITY) const {
 		Color ret = *this;

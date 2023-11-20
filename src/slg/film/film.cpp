@@ -214,7 +214,9 @@ Film::~Film() {
 }
 
 void Film::CopyDynamicSettings(const Film &film) {
-	channels = film.channels;
+	//channels = film.channels;
+	channels.copy(film.channels);
+
 	maskMaterialIDs = film.maskMaterialIDs;
 	byMaterialIDs = film.byMaterialIDs;
 	maskObjectIDs = film.maskObjectIDs;

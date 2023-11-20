@@ -32,11 +32,11 @@
 #include "slg/film/imagepipeline/plugins/real_bloom.h"
 #include "slg/film/framebuffer.h"
 
-#include "slg/film/imagepipeline/plugins/RealBloom/Convolution.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmImageIO.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMF.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMS.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmXYZ.h"
+#include "./RealBloom/Convolution.h"
+#include "./RealBloom/ColorManagement/CmImageIO.h"
+#include "./RealBloom/ColorManagement/CMF.h"
+#include "./RealBloom/ColorManagement/CMS.h"
+#include "./RealBloom/ColorManagement/CmXYZ.h"
 
 using namespace std;
 using namespace luxrays;
@@ -90,13 +90,13 @@ void setInputColorSpace(const std::string& colorSpace)
 
 BOOST_CLASS_EXPORT_IMPLEMENT(slg::RealBloomPlugin)
 
-RealBloomPlugin::RealBloomPlugin(const float blendExposure, const float blendMix, const std::string& knlFilename)
-    :blendExposure(blendExposure), blendMix(blendMix), knlFilename(knlFilename), firstTime(true), imgKernel(NULL){
+RealBloomPlugin::RealBloomPlugin(const float blendExposure, const float blendConv, const std::string& knlFilename)
+    :blendExposure(blendExposure), blendConv(blendConv), knlFilename(knlFilename), firstTime(true), imgKernel(NULL){
 
 }
 
 RealBloomPlugin::RealBloomPlugin() {
-    blendMix =0.2f;
+    blendConv =0.2f;
     blendExposure = -0.5f;
 }
 
@@ -319,8 +319,8 @@ void RealBloomPlugin::Conv(int in_w, int in_h, std::vector<float>* input,
 
     params->blendAdditive = myParams.blendAdditive;
     params->blendInput = myParams.blendInput;
-    params->blendConv = myParams.blendConv;
-    params->blendMix = blendMix;
+    params->blendConv = blendConv;
+    params->blendMix = myParams.blendMix;
     params->blendExposure = blendExposure;
 
 

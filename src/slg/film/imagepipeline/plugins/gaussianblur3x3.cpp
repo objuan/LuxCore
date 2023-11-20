@@ -211,7 +211,7 @@ void GaussianBlur3x3FilterPlugin::Apply(Film &film, const u_int index) {
 // HardwareDevice version
 //------------------------------------------------------------------------------
 
-void GaussianBlur3x3FilterPlugin::AddHWChannelsUsed(unordered_set<Film::FilmChannelType, hash<int> > &hwChannelsUsed) const {
+void GaussianBlur3x3FilterPlugin::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
 	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
 }
 

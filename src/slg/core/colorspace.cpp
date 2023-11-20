@@ -26,6 +26,24 @@ using namespace std;
 using namespace luxrays;
 using namespace slg;
 
+/* TEXTURE
+colorspace	opencolorio
+colorspace.config	OpenColorIO-Config-ACES-1.2/aces_1.2/config.ocio
+colorspace.name	Utility - sRGB - Texture
+
+EXR
+colorspace.config	OpenColorIO-Config-ACES-1.2/aces_1.2/config.ocio
+colorspace.name	Utility - Raw
+
+per pipeline:
+TONEMAP_OPENCOLORIO
+	mode 	DISPLAY_CONVERSION
+	config	/mnt/z/MATADOR/Plugins/OpenColorIO-Config-ACES-1.2/aces_1.2/config.ocio
+	src 	ACEScg
+	display 	ACES
+	view	sRGB
+*/
+
 //------------------------------------------------------------------------------
 // ColorSpaceConfig
 //------------------------------------------------------------------------------

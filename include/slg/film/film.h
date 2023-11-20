@@ -97,11 +97,12 @@ private:
 
 class SampleResult;
 class ImagePipeline;
+class FilmChannel;
 
 class Film {
 public:
 	typedef enum {
-		RADIANCE_PER_PIXEL_NORMALIZED,
+		RADIANCE_PER_PIXEL_NORMALIZED ,
 		RADIANCE_PER_SCREEN_NORMALIZED,
 		ALPHA,
 		// RGB_TONEMAPPED is deprecated and replaced by IMAGEPIPELINE
@@ -143,17 +144,56 @@ public:
 		ALBEDO,
 		AVG_SHADING_NORMAL,
 		NOISE,
-		USER_IMPORTANCE
+		USER_IMPORTANCE,
 	} FilmChannelType;
 	
-	typedef std::unordered_set<FilmChannelType, std::hash<int> > FilmChannels;
+	//typedef std::unordered_set<FilmChannelType, std::hash<int> > FilmChannels;
+	class FilmChannels
+	{
+		bool values[64];
+
+	public:
+		FilmChannels() { clear(); }
+		FilmChannels(const std::vector< FilmChannelType> &list) 
+		{ 
+			clear(); 
+			for (auto a : list) values[a] = true;
+		}
+
+		std::vector< FilmChannelType> GetList() const {
+			std::vector< FilmChannelType> v;
+			for (int i = 0; i < 64; i++)
+			{
+				if (values[i])
+					v.push_back( (FilmChannelType)i);
+			}
+			return v;
+		}
+		int count(const FilmChannelType type) const { return values[type] ? 1 : 0; }
+		inline bool HasChannel(const FilmChannelType type) const { return values[type]; }
+		void insert(FilmChannelType type) { values[type] = true; }
+		void erase(FilmChannelType type) { values[type] = false; }
+		void clear() { memset(values, 0, sizeof(bool) * 64); }
+		void copy(const FilmChannels& ch) {
+			memcpy(values,ch.values, sizeof(bool) * 64);
+		}
+		template<class Archive> void serialize(Archive& ar, const unsigned int version) {
+			ar& values;
+		}
+	};
+
+protected:
 
 	Film(const u_int width, const u_int height, const u_int *subRegion = NULL);
+
+public:
+
 	~Film();
+	static Film* Create(const u_int width, const u_int height, const u_int* subRegion = NULL);
 
-	void SetThreadCount(const u_int threadCount);
+	virtual void SetThreadCount(const u_int threadCount);
 
-	void Init();
+	virtual void Init();
 	bool IsInitiliazed() const { return initialized; }
 	void Resize(const u_int w, const u_int h);
 	void Reset(const bool onlyCounters = false);
@@ -198,7 +238,8 @@ public:
 	// Channels
 	//--------------------------------------------------------------------------
 
-	bool HasChannel(const FilmChannelType type) const { return channels.count(type) > 0; }
+
+	bool HasChannel(const FilmChannelType type) const { return channels.HasChannel(type); }
 	u_int GetChannelCount(const FilmChannelType type) const;
 	const FilmChannels &GetChannels() const { return channels; }
 
@@ -304,9 +345,11 @@ public:
 	void SetSampleCount(const double totalSampleCount,
 			const double RADIANCE_PER_PIXEL_NORMALIZED_count,
 			const double RADIANCE_PER_SCREEN_NORMALIZED_count);
-	void AddSampleCount(const u_int threadIndex,
+	virtual void AddSampleCount(const u_int threadIndex,
 			const double RADIANCE_PER_PIXEL_NORMALIZED_count,
 			const double RADIANCE_PER_SCREEN_NORMALIZED_count);
+
+	virtual void WriteSamples(const u_int threadIndex) {}
 
 	// Normal method versions
 	void AddSample(const u_int x, const u_int y,
@@ -317,12 +360,14 @@ public:
 		const SampleResult &sampleResult);
 	
 	// Atomic method versions
-	void AtomicAddSample(const u_int x, const u_int y,
+	virtual void AtomicAddSample(const u_int x, const u_int y,
 		const SampleResult &sampleResult, const float weight = 1.f);
-	void AtomicAddSampleResultColor(const u_int x, const u_int y,
+	virtual void AtomicAddSampleResultColor(const u_int x, const u_int y,
 		const SampleResult &sampleResult, const float weight);
-	void AtomicAddSampleResultData(const u_int x, const u_int y,
+	virtual void AtomicAddSampleResultData(const u_int x, const u_int y,
 		const SampleResult &sampleResult);
+
+	void PopSalpmes(const u_int threadIndex);
 
 	void ReadHWBuffer_IMAGEPIPELINE(const u_int index);
 	void WriteHWBuffer_IMAGEPIPELINE(const u_int index);
@@ -465,7 +510,7 @@ public:
 	friend class FilmDenoiser;
 	friend class boost::serialization::access;
 
-private:
+protected:
 	// Used by serialization
 	Film();
 

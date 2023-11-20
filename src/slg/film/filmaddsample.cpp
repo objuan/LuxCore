@@ -28,13 +28,21 @@
 #include "slg/utils/varianceclamping.h"
 #include "slg/film/denoiser/filmdenoiser.h"
 
+#include "slg/engines/bidircpubgl/Fastfilm.h"
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
 
+
 //------------------------------------------------------------------------------
 // Film add sample related methods
 //------------------------------------------------------------------------------
+
+Film* Film::Create(const u_int width, const u_int height, const u_int* subRegion ) {
+	//return new Film(width, height, subRegion);
+	return new FastFilm(width, height, subRegion);
+}
 
 //------------------------------------------------------------------------------
 // Normal method versions
@@ -257,6 +265,8 @@ void Film::AddSample(const u_int x, const u_int y,
 //------------------------------------------------------------------------------
 // Atomic method versions
 //------------------------------------------------------------------------------
+
+// molto lento .. 
 
 void Film::AtomicAddSampleResultColor(const u_int x, const u_int y,
 		const SampleResult &sampleResult, const float weight)  {

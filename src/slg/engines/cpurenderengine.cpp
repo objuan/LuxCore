@@ -275,7 +275,7 @@ void CPUTileRenderThread::StartRenderThread() {
 	delete tileFilm;
 
 	CPUTileRenderEngine *cpuTileEngine = (CPUTileRenderEngine *)renderEngine;
-	tileFilm = new Film(cpuTileEngine->tileRepository->tileWidth, cpuTileEngine->tileRepository->tileHeight, NULL);
+	tileFilm = Film::Create(cpuTileEngine->tileRepository->tileWidth, cpuTileEngine->tileRepository->tileHeight, NULL);
 	tileFilm->CopyDynamicSettings(*(cpuTileEngine->film));
 	tileFilm->Init();
 

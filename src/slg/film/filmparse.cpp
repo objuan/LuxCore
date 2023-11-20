@@ -789,8 +789,8 @@ ImagePipeline *Film::CreateImagePipeline(const Properties &props, const string &
 			} 
 			else if (type == "REAL_BLOOM") {
 				const float blendExposure = Clamp(props.Get(Property(prefix + ".blendExposure")(-5.0f)).Get<float>(), -30.f, INFINITY);
-				const float blendMix = Clamp(props.Get(Property(prefix + ".blendMix")(0.2f)).Get<float>(), 0.f, INFINITY);
-				imagePipeline->AddPlugin(new RealBloomPlugin(blendExposure, blendMix,
+				const float blendConv = Clamp(props.Get(Property(prefix + ".blendConv")(0.2f)).Get<float>(), 0.f, INFINITY);
+				imagePipeline->AddPlugin(new RealBloomPlugin(blendExposure, blendConv,
 					props.Get(Property(prefix + ".kernelPath")(OCIO::ROLE_RENDERING)).Get<string>()
 					));
 			}

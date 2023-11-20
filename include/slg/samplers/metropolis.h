@@ -105,7 +105,7 @@ public:
 	static slg::ocl::Sampler *FromPropertiesOCL(const luxrays::Properties &cfg);
 	static void AddRequiredChannels(Film::FilmChannels &channels, const luxrays::Properties &cfg);
 
-private:
+protected:
 	static const luxrays::Properties &GetDefaultProps();
 
 	MetropolisSamplerSharedData *sharedData;

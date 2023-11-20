@@ -142,6 +142,12 @@ template<class T> inline T Cerp(float t, T v0, T v1, T v2, T v3) {
 					t * (3.f * (v1 - v2) + v3 - v0)));
 }
 
+template<class T> inline T Clamp01(T value) {
+	T temp = value + 1 - abs(value - 1);
+	return (temp + abs(temp)) * (T)0.25;
+}
+
+
 template<class T> inline T Clamp(T val, T low, T high) {
 	return val > low ? (val < high ? val : high) : low;
 }

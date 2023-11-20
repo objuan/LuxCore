@@ -64,13 +64,13 @@ Tile::~Tile() {
 }
 
 void Tile::InitTileFilm(const Film &film, Film **tileFilm) {
-	(*tileFilm) = new Film(coord.width, coord.height);
+	(*tileFilm) = Film::Create(coord.width, coord.height);
 	(*tileFilm)->CopyDynamicSettings(film);
 
 	// Remove all channels but RADIANCE_PER_PIXEL_NORMALIZED and IMAGEPIPELINE
 	const Film::FilmChannels &channels = (*tileFilm)->GetChannels();
 	
-	for (auto const &c : channels) {
+	for (auto  c : channels.GetList()) {
 		if ((c != Film::RADIANCE_PER_PIXEL_NORMALIZED) && (c != Film::IMAGEPIPELINE))
 			(*tileFilm)->RemoveChannel(c);
 	}

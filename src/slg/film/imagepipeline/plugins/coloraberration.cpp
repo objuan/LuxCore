@@ -143,7 +143,7 @@ void ColorAberrationPlugin::Apply(Film &film, const u_int index) {
 // HardwareDevice version
 //------------------------------------------------------------------------------
 
-void ColorAberrationPlugin::AddHWChannelsUsed(unordered_set<Film::FilmChannelType, hash<int> > &hwChannelsUsed) const {
+void ColorAberrationPlugin::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
 	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
 }
 

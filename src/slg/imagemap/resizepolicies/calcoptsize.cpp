@@ -94,9 +94,12 @@ void ImageMapResizePolicy::RenderFunc(const u_int threadIndex,
 	// Initialize SampleResult 
 	vector<SampleResult> sampleResults(1);
 	SampleResult &sampleResult = sampleResults[0];
-	const Film::FilmChannels sampleResultsChannels({
-		Film::RADIANCE_PER_PIXEL_NORMALIZED
-	});
+
+	Film::FilmChannels sampleResultsChannels;
+	sampleResultsChannels.insert(Film::RADIANCE_PER_PIXEL_NORMALIZED);
+	//const Film::FilmChannels sampleResultsChannels({
+	//	Film::RADIANCE_PER_PIXEL_NORMALIZED
+	//});
 	sampleResult.Init(&sampleResultsChannels, 1);
 
 	// Initialize the max. path depth

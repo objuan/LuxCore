@@ -45,7 +45,7 @@ public:
 
 	void Init(const Film::FilmChannels *channels, const u_int radianceGroupCount);
 
-	bool HasChannel(const Film::FilmChannelType type) const { return channels->count(type) > 0; }
+	bool HasChannel(const Film::FilmChannelType type) const { return channels->HasChannel(type); }
 
 	luxrays::Spectrum GetSpectrum(const std::vector<RadianceChannelScale> &radianceChannelScales) const;
 	float GetY(const std::vector<RadianceChannelScale> &radianceChannelScales) const;

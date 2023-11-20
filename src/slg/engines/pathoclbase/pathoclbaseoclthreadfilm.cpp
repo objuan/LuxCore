@@ -117,7 +117,7 @@ void PathOCLBaseOCLRenderThread::ThreadFilm::Init(Film *engineFlm,
 	delete film;
 
 	// Allocate the new Film
-	film = new Film(threadFilmWidth, threadFilmHeight, threadFilmSubRegion);
+	film = Film::Create(threadFilmWidth, threadFilmHeight, threadFilmSubRegion);
 	film->CopyDynamicSettings(*engineFilm);
 	// Engine film may have RADIANCE_PER_SCREEN_NORMALIZED channel because of
 	// hybrid back/forward path tracing

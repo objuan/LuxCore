@@ -1,0 +1,13 @@
+BLENDER
+
+/* Path tracing: sample point on light and evaluate light shader, then  queue shadow ray to be traced. */
+integrate_surface_direct_light
+	float3 rand_light;
+	LightSample = light_sample_from_position
+
+
+PDF
+probability density function (PDF) is used to define the optimal directions for sampling
+The PDF is a normalized function, where the integral over the entire domain of the function is 1 and the peaks represent important regions for sampling.
+
+we multiply each sample by the inverse of the PDF. This yields a Monte Carlo estimator that uses the weighted average of all the samples:

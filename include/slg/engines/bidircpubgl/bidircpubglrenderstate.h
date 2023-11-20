@@ -16,33 +16,42 @@
  * limitations under the License.                                          *
  ***************************************************************************/
 
-#include "slg/film/film.h"
-#include "slg/film/imagepipeline/plugins/nop.h"
+#ifndef _SLG_BIDIRCPURENDERSTATE_BGL_H
+#define	_SLG_BIDIRCPURENDERSTATE_BGL_H
 
-using namespace std;
-using namespace luxrays;
-using namespace slg;
+#include "luxrays/utils/serializationutils.h"
+#include "slg/slg.h"
+#include "slg/renderstate.h"
 
-//------------------------------------------------------------------------------
-// Nop plugin
-//------------------------------------------------------------------------------
+namespace slg {
 
-BOOST_CLASS_EXPORT_IMPLEMENT(slg::NopPlugin)
+	class PhotonGICache;
 
-ImagePipelinePlugin *NopPlugin::Copy() const {
-	return new NopPlugin();
+class BiDirCPUBGLRenderState : public RenderState {
+public:
+	BiDirCPUBGLRenderState(const u_int seed, PhotonGICache *photonGICache);
+	virtual ~BiDirCPUBGLRenderState();
+
+	u_int bootStrapSeed;
+	PhotonGICache *photonGICache;
+
+	friend class boost::serialization::access;
+
+private:
+	// Used by serialization
+	BiDirCPUBGLRenderState();
+
+	template<class Archive> void save(Archive &ar, const unsigned int version) const;
+	template<class Archive>	void load(Archive &ar, const unsigned int version);
+	BOOST_SERIALIZATION_SPLIT_MEMBER()
+
+	bool deletePhotonGICachePtr;
+};
+
 }
 
-void NopPlugin::Apply(Film &film, const u_int index) {
-}
+BOOST_CLASS_VERSION(slg::BiDirCPUBGLRenderState, 2)
 
-//------------------------------------------------------------------------------
-// HardwareDevice version
-//------------------------------------------------------------------------------
+BOOST_CLASS_EXPORT_KEY(slg::BiDirCPUBGLRenderState)
 
-void NopPlugin::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
-	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
-}
-
-void NopPlugin::ApplyHW(Film &film, const u_int index) {
-}
+#endif	/* _SLG_BIDIRCPURENDERSTATE_H */

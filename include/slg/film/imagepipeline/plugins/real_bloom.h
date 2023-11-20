@@ -88,12 +88,12 @@ private:
 	template<class Archive> void serialize(Archive &ar, const u_int version) {
 		ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(ImagePipelinePlugin);
 		ar & blendExposure;
-        ar& blendMix;
+        ar& blendConv;
         ar& knlFilename;
 	}
 
 	float blendExposure;
-    float blendMix;
+    float blendConv;
     std::string knlFilename ;
     bool firstTime ;
     CmImage* imgKernel;

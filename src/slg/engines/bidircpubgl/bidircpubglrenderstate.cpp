@@ -16,33 +16,51 @@
  * limitations under the License.                                          *
  ***************************************************************************/
 
-#include "slg/film/film.h"
-#include "slg/film/imagepipeline/plugins/nop.h"
+#include "luxrays/utils/serializationutils.h"
+#include "slg/engines/bidircpubgl/BiDirCPUBGLRenderState.h"
+#include "slg/engines/bidircpubgl/bidircpubgl.h"
 
 using namespace std;
 using namespace luxrays;
 using namespace slg;
 
 //------------------------------------------------------------------------------
-// Nop plugin
+// BiDirCPUBGLRenderState
 //------------------------------------------------------------------------------
 
-BOOST_CLASS_EXPORT_IMPLEMENT(slg::NopPlugin)
+BOOST_CLASS_EXPORT_IMPLEMENT(slg::BiDirCPUBGLRenderState)
 
-ImagePipelinePlugin *NopPlugin::Copy() const {
-	return new NopPlugin();
+BiDirCPUBGLRenderState::BiDirCPUBGLRenderState() :
+		RenderState(BiDirCPUBGLRenderEngine::GetObjectTag()),
+		photonGICache(nullptr), deletePhotonGICachePtr(false) {
 }
 
-void NopPlugin::Apply(Film &film, const u_int index) {
+BiDirCPUBGLRenderState::BiDirCPUBGLRenderState(const u_int seed, PhotonGICache *pgic) :
+		RenderState(BiDirCPUBGLRenderEngine::GetObjectTag()),
+		bootStrapSeed(seed), photonGICache(pgic), deletePhotonGICachePtr(false) {
 }
 
-//------------------------------------------------------------------------------
-// HardwareDevice version
-//------------------------------------------------------------------------------
-
-void NopPlugin::AddHWChannelsUsed(Film::FilmChannels& hwChannelsUsed) const {
-	hwChannelsUsed.insert(Film::IMAGEPIPELINE);
+BiDirCPUBGLRenderState::~BiDirCPUBGLRenderState() {
+	if (deletePhotonGICachePtr)
+		delete photonGICache;
 }
 
-void NopPlugin::ApplyHW(Film &film, const u_int index) {
+template<class Archive> void BiDirCPUBGLRenderState::load(Archive &ar, const u_int version) {
+	ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(RenderState);
+	ar & bootStrapSeed;
+	ar & photonGICache;
+
+	deletePhotonGICachePtr = true;
+}
+
+template<class Archive> void BiDirCPUBGLRenderState::save(Archive &ar, const u_int version) const {
+	ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(RenderState);
+	ar & bootStrapSeed;
+	ar & photonGICache;
+}
+
+namespace slg {
+// Explicit instantiations for portable archives
+template void BiDirCPUBGLRenderState::serialize(LuxOutputArchive &ar, const u_int version);
+template void BiDirCPUBGLRenderState::serialize(LuxInputArchive &ar, const u_int version);
 }

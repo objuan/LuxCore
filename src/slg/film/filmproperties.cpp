@@ -113,7 +113,7 @@ Film *Film::FromProperties(const Properties &cfg) {
 	SLG_LOG("Film resolution: " << filmFullWidth << "x" << filmFullHeight);
 	if (filmSubRegionUsed)
 		SLG_LOG("Film sub-region: " << filmSubRegion[0] << " " << filmSubRegion[1] << filmSubRegion[2] << " " << filmSubRegion[3]);
-	unique_ptr<Film> film(new Film(filmFullWidth, filmFullHeight,
+	unique_ptr<Film> film(Film::Create(filmFullWidth, filmFullHeight,
 			filmSubRegionUsed ? filmSubRegion : NULL));
 
 	// For compatibility with the past

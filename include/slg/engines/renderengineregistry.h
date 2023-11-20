@@ -28,6 +28,7 @@
 #include "slg/engines/pathcpu/pathcpu.h"
 #include "slg/engines/rtpathcpu/rtpathcpu.h"
 #include "slg/engines/bidircpu/bidircpu.h"
+#include "slg/engines/bidircpubgl/bidircpubgl.h"
 #include "slg/engines/bidirvmcpu/bidirvmcpu.h"
 #include "slg/engines/filesaver/filesaver.h"
 #include "slg/engines/tilepathcpu/tilepathcpu.h"
@@ -68,6 +69,7 @@ protected:
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, LightCPURenderEngine);
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, PathCPURenderEngine);
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, BiDirCPURenderEngine);
+	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, BiDirCPUBGLRenderEngine);
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, BiDirVMCPURenderEngine);
 	OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(RenderEngineRegistry, FileSaverRenderEngine);
 #if !defined(LUXRAYS_DISABLE_OPENCL)

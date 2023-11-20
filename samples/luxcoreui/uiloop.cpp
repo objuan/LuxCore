@@ -349,10 +349,10 @@ void LuxCoreApp::DrawCaptions() {
 	const u_int lightSemplesSec = stats.Get("stats.renderengine.total.samplesec.light").Get<double>();
 
 	const string msgSemplesSec = ((eyePass > 0) && (lightPass > 0)) ?
-		boost::str(boost::format("[Avg. samples/sec % 3.2fM (%.2fM+%.2fM)]") %
+		boost::str(boost::format("[Avg. samples/sec % 3.4fM (%.2fM+%.2fM)]") %
 			(stats.Get("stats.renderengine.total.samplesec").Get<double>() / 1000000.0) %
 			(eyeSemplesSec / 1000000.0) % (lightSemplesSec / 1000000.0)) :
-		boost::str(boost::format("[Avg. samples/sec % 3.2fM]") %
+		boost::str(boost::format("[Avg. samples/sec % 3.4fM]") %
 			(stats.Get("stats.renderengine.total.samplesec").Get<double>() / 1000000.0));
 	
 	const string msgTriSec = boost::str(boost::format("[Avg. rays/sample %.2f on %.1fK tris]") %

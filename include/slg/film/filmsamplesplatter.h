@@ -36,6 +36,7 @@ public:
 	~FilmSampleSplatter();
 
 	const Filter *GetFilter() const { return filter; }
+	const FilterLUTs* GetFilterLUTs() const { return filterLUTs;  }
 
 	// This method must be thread-safe.
 	void AtomicSplatSample(Film &film, const SampleResult &sampleResult, const float weight) const;

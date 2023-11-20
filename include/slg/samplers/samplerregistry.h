@@ -26,6 +26,7 @@
 #include "slg/samplers/random.h"
 #include "slg/samplers/sobol.h"
 #include "slg/samplers/metropolis.h"
+#include "slg/samplers/metropolis_fast.h"
 #include "slg/samplers/rtpathcpusampler.h"
 #include "slg/samplers/tilepathsampler.h"
 
@@ -55,6 +56,7 @@ protected:
 	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, RandomSamplerSharedData);
 	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, SobolSamplerSharedData);
 	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, MetropolisSamplerSharedData);
+	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, MetropolisFastSamplerSharedData);
 	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, RTPathCPUSamplerSharedData);
 	SAMPLERSHAREDDATA_STATICTABLE_DECLARE_REGISTRATION(SamplerSharedDataRegistry, TilePathSamplerSharedData);
 	// Just add here any new SamplerSharedData (don't forget in the .cpp too)
@@ -112,6 +114,7 @@ protected:
 	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, RandomSampler);
 	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, SobolSampler);
 	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, MetropolisSampler);
+	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, MetropolisFastSampler);
 	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, RTPathCPUSampler);
 	SAMPLER_OBJECTSTATICREGISTRY_DECLARE_REGISTRATION(SamplerRegistry, TilePathSampler);
 	// Just add here any new Sampler (don't forget in the .cpp too)

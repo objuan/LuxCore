@@ -47,7 +47,7 @@ void TilePathNativeRenderThread::StartRenderThread() {
 	delete tileFilm;
 
 	TilePathOCLRenderEngine *engine = (TilePathOCLRenderEngine *)renderEngine;
-	tileFilm = new Film(engine->tileRepository->tileWidth, engine->tileRepository->tileHeight, NULL);
+	tileFilm = Film::Create(engine->tileRepository->tileWidth, engine->tileRepository->tileHeight, NULL);
 	tileFilm->CopyDynamicSettings(*(engine->film));
 	tileFilm->Init();
 
