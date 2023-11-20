@@ -20,9 +20,13 @@
 #include <boost/foreach.hpp>
 #include <boost/thread/mutex.hpp>
 
+#if (EMBREE3)
+#include <embree3/rtcore.h>
+#include <embree3/rtcore_builder.h>
+#else
 #include <embree4/rtcore.h>
 #include <embree4/rtcore_builder.h>
-
+#endif
 #include "luxrays/core/bvh/bvhbuild.h"
 #include "luxrays/utils/atomic.h"
 

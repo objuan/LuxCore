@@ -226,7 +226,54 @@ bool EmbreeAccel::MeshPtrCompare(const Mesh *p0, const Mesh *p1) {
 }
 
 bool EmbreeAccel::Intersect(const Ray *ray, RayHit *hit) const {
-	
+#ifndef EMBREE4
+	RTCIntersectContext context;
+	rtcInitIntersectContext(&context);
+
+	RTCRayHit embreeRayHit;
+
+	if (isnan(ray->o.x) || isnan(ray->o.y) || isnan(ray->o.z) || isnan(ray->d.x) || isnan(ray->d.y) || isnan(ray->d.z))
+		return false;
+
+	embreeRayHit.ray.org_x = ray->o.x;
+	embreeRayHit.ray.org_y = ray->o.y;
+	embreeRayHit.ray.org_z = ray->o.z;
+
+	embreeRayHit.ray.dir_x = ray->d.x;
+	embreeRayHit.ray.dir_y = ray->d.y;
+	embreeRayHit.ray.dir_z = ray->d.z;
+
+	embreeRayHit.ray.tnear = ray->mint;
+	embreeRayHit.ray.tfar = ray->maxt;
+
+	embreeRayHit.ray.mask = 0xFFFFFFFF;
+	embreeRayHit.ray.time = (ray->time - minTime) * timeScale;
+
+	embreeRayHit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+	embreeRayHit.hit.primID = RTC_INVALID_GEOMETRY_ID;
+	embreeRayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+
+	rtcIntersect1(embreeScene, &context, &embreeRayHit);
+
+	if ((embreeRayHit.hit.geomID != RTC_INVALID_GEOMETRY_ID) &&
+		// A safety check in case of not enough numerical precision. Embree
+		// can return some intersection out of [mint, maxt] range for
+		// some extremely large floating point number.
+		(embreeRayHit.ray.tfar >= ray->mint) && (embreeRayHit.ray.tfar <= ray->maxt)) {
+		hit->meshIndex = (embreeRayHit.hit.instID[0] == RTC_INVALID_GEOMETRY_ID) ? embreeRayHit.hit.geomID : embreeRayHit.hit.instID[0];
+		hit->triangleIndex = embreeRayHit.hit.primID;
+
+		hit->t = embreeRayHit.ray.tfar;
+
+		hit->b1 = embreeRayHit.hit.u;
+		hit->b2 = embreeRayHit.hit.v;
+
+		return true;
+	}
+	else
+		return false;
+#else
+
 	if (isnan(ray->o.x) || isnan(ray->o.y) || isnan(ray->o.z) || isnan(ray->d.x) || isnan(ray->d.y) || isnan(ray->d.z))
 		return false;
 
@@ -302,6 +349,7 @@ bool EmbreeAccel::Intersect(const Ray *ray, RayHit *hit) const {
 		return true;
 	} else
 		return false;
+#endif
 }
 
 }

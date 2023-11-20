@@ -21,7 +21,11 @@
 
 #include <boost/thread.hpp>
 
+#ifndef EMBREE4
+#include <embree3/rtcore.h>
+#else
 #include <embree4/rtcore.h>
+#endif
 
 #include "luxrays/luxrays.h"
 #include "luxrays/core/accelerator.h"
