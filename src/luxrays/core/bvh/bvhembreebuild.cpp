@@ -20,7 +20,7 @@
 #include <boost/foreach.hpp>
 #include <boost/thread/mutex.hpp>
 
-#if (EMBREE3)
+#ifndef EMBREE4
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_builder.h>
 #else
