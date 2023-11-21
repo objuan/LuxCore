@@ -72,7 +72,7 @@ struct MyConvolutionParams
 
 class RealBloomPlugin : public ImagePipelinePlugin {
 public:
-	RealBloomPlugin(const float blendExposure,const float blendMix, const std::string& knlFilename);
+	RealBloomPlugin(const float blendExposure,const float blendMix, const float threshold, const float knee, const std::string& knlFilename);
 
 	virtual ImagePipelinePlugin *Copy() const;
 
@@ -88,12 +88,16 @@ private:
 	template<class Archive> void serialize(Archive &ar, const u_int version) {
 		ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(ImagePipelinePlugin);
 		ar & blendExposure;
-        ar& blendMix;
+        ar& blendConv;
+		ar& threshold;
+		ar& knee;
         ar& knlFilename;
 	}
 
 	float blendExposure;
-    float blendMix;
+    float blendConv;
+	float threshold;
+	float knee;
     std::string knlFilename ;
     bool firstTime ;
     CmImage* imgKernel;

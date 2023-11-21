@@ -32,11 +32,11 @@
 #include "slg/film/imagepipeline/plugins/real_bloom.h"
 #include "slg/film/framebuffer.h"
 
-#include "slg/film/imagepipeline/plugins/RealBloom/Convolution.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmImageIO.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMF.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMS.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmXYZ.h"
+#include "./RealBloom/Convolution.h"
+#include "./RealBloom/ColorManagement/CmImageIO.h"
+#include "./RealBloom/ColorManagement/CMF.h"
+#include "./RealBloom/ColorManagement/CMS.h"
+#include "./RealBloom/ColorManagement/CmXYZ.h"
 
 using namespace std;
 using namespace luxrays;
@@ -90,14 +90,16 @@ void setInputColorSpace(const std::string& colorSpace)
 
 BOOST_CLASS_EXPORT_IMPLEMENT(slg::RealBloomPlugin)
 
-RealBloomPlugin::RealBloomPlugin(const float blendExposure, const float blendMix, const std::string& knlFilename)
-    :blendExposure(blendExposure), blendMix(blendMix), knlFilename(knlFilename), firstTime(true), imgKernel(NULL){
+RealBloomPlugin::RealBloomPlugin(const float blendExposure, const float blendConv, const float threshold, const float knee, const std::string& knlFilename)
+    :blendExposure(blendExposure), blendConv(blendConv), threshold(threshold), knee(knee), knlFilename(knlFilename), firstTime(true), imgKernel(NULL){
 
 }
 
 RealBloomPlugin::RealBloomPlugin() {
-    blendMix =0.2f;
+    blendConv =0.2f;
     blendExposure = -0.5f;
+	threshold = 0.f;
+	knee = 0.f;
 }
 
 RealBloomPlugin::~RealBloomPlugin() {
@@ -106,7 +108,7 @@ RealBloomPlugin::~RealBloomPlugin() {
 }
 
 ImagePipelinePlugin * RealBloomPlugin::Copy() const {
-	return new RealBloomPlugin(-0.5f,0.2f,"");
+	return new RealBloomPlugin(-0.5f,0.2f,0.f,0.f,"");
 }
 
 //------------------------------------------------------------------------------
@@ -311,16 +313,16 @@ void RealBloomPlugin::Conv(int in_w, int in_h, std::vector<float>* input,
     params->methodInfo.method = RealBloom::ConvolutionMethod::FFT_CPU;
     params->methodInfo.FFT_CPU_deconvolve = myParams.deconvolve;
     params->useKernelTransformOrigin = false,//myParams.useKernelTransformOrigin;
-        params->threshold = myParams.threshold;
-    params->knee = myParams.knee;
+    params->threshold = threshold;
+    params->knee = knee;
     params->autoExposure = myParams.autoExposure;
     // params->inputTransformParams = 
    //  readImageTransformArguments(args, "input", params->inputTransformParams);
 
     params->blendAdditive = myParams.blendAdditive;
     params->blendInput = myParams.blendInput;
-    params->blendConv = myParams.blendConv;
-    params->blendMix = blendMix;
+    params->blendConv = blendConv;
+    params->blendMix = myParams.blendMix;
     params->blendExposure = blendExposure;
 
 
