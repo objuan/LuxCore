@@ -32,11 +32,11 @@
 #include "slg/film/imagepipeline/plugins/real_bloom.h"
 #include "slg/film/framebuffer.h"
 
-#include "slg/film/imagepipeline/plugins/RealBloom/Convolution.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmImageIO.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMF.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMS.h"
-#include "slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmXYZ.h"
+#include "./RealBloom/Convolution.h"
+#include "./RealBloom/ColorManagement/CmImageIO.h"
+#include "./RealBloom/ColorManagement/CMF.h"
+#include "./RealBloom/ColorManagement/CMS.h"
+#include "./RealBloom/ColorManagement/CmXYZ.h"
 
 using namespace std;
 using namespace luxrays;
