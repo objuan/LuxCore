@@ -40,6 +40,8 @@ using namespace slg;
 Film::Film() : filmDenoiser(this) {
 	initialized = false;
 
+	cameraWidth = 0;
+	cameraHeight = 0;
 	width = 0;
 	height = 0;
 	subRegion[0] = 0;
@@ -105,6 +107,8 @@ Film::Film(const u_int w, const u_int h, const u_int *sr) : filmDenoiser(this) {
 
 	initialized = false;
 
+	cameraWidth = w;
+	cameraHeight = h;
 	width = w;
 	height = h;
 	if (sr) {
@@ -1411,3 +1415,9 @@ void Film::RunTests() {
 		noiseEstimation->Test();
 	}
 }
+
+void Film::UpdateCamera(u_int w, u_int h){
+	cameraWidth = w;
+	cameraHeight = w;
+}
+

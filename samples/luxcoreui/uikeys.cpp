@@ -32,6 +32,8 @@ using namespace std;
 using namespace luxrays;
 using namespace luxcore;
 
+float resolutionFactor = 1;
+
 //------------------------------------------------------------------------------
 // Key bindings
 //------------------------------------------------------------------------------
@@ -97,6 +99,40 @@ void LuxCoreApp::ToolCameraEditKeys(GLFWwindow *window, int key, int scanCode, i
 		case GLFW_KEY_RIGHT: {
 			app->session->BeginSceneEdit();
 			app->config->GetScene().GetCamera().RotateRight(app->optRotateStep);
+			app->session->EndSceneEdit();
+			break;
+		}
+		case GLFW_KEY_KP_ADD: {
+			app->session->BeginSceneEdit();
+			resolutionFactor += 0.1f;
+			Properties props;
+			float w = app->session->GetFilm().GetWidth();
+			float h = app->session->GetFilm().GetHeight();
+			float a = h / w;
+			props << Property("film.camera.res")(
+				(int)(w * resolutionFactor),
+				(int)(w * resolutionFactor * a)
+				);
+		//	props << Property("film.camera.height")((int)(w * resolutionFactor * a));
+
+			app->session->Parse(props);
+			//app->session->GetFilm().SetResolutionFactor(1);
+			app->session->EndSceneEdit();
+			break;
+		}	
+		case GLFW_KEY_KP_SUBTRACT: {
+			app->session->BeginSceneEdit();
+			resolutionFactor -= 0.1f;
+			Properties props;
+			float w = app->session->GetFilm().GetWidth();
+			float h = app->session->GetFilm().GetHeight();
+			float a = h / w;
+			props << Property("film.camera.res")(
+				(int)(w * resolutionFactor),
+					(int)(w * resolutionFactor * a)
+						);
+			//props << Property("film.camera.height")((int)(w * resolutionFactor * a));
+			app->session->Parse(props);
 			app->session->EndSceneEdit();
 			break;
 		}

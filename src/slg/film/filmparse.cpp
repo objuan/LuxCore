@@ -967,4 +967,62 @@ void Film::Parse(const Properties &props) {
 		noiseEstimation = new FilmNoiseEstimation(this, noiseEstimationWarmUp,
 				noiseEstimationTestStep, noiseEstimationFilterScale, noiseEstimationImagePipelineIndex);
 	}
+
+	bool toClear = false;
+	if (props.HaveNames("film.camera.res"))
+	{
+	
+		float res[2];
+
+		const Property defaultProp = Property("film.camera.res")(width,height);
+		const Property& prop = props.Get(defaultProp);
+		cameraWidth = prop.Get<float>(0);
+		cameraHeight = prop.Get<float>(1);
+		toClear = true;
+	}
+	/*if (props.HaveNames("film.camera.width"))
+	{
+		u_int w = props.Get(Property("film.camera.width")(width)).Get<u_int>();
+		w = Clamp(w, (u_int)10, width);
+		if (w != cameraWidth)
+		{
+			cameraWidth = w;
+			toClear = true;
+		}
+	}
+	if (props.HaveNames("film.camera.height"))
+	{
+		u_int h = props.Get(Property("film.camera.height")(height)).Get<u_int>();
+		h = Clamp(h, (u_int)10, height);
+		if (h != cameraHeight)
+		{
+			cameraHeight = h;
+			toClear = true;
+		}
+	}*/
+	if (toClear)
+		Clear();
+
+	//if (props.HaveNames("film.resolutionFactor"))
+	//{
+	//	float _resolutionFactor = props.Get(Property("film.resolutionFactor")(1)).Get<float>();
+	//	_resolutionFactor = Clamp(_resolutionFactor, 0.1f, 1.0f);
+	//	if (_resolutionFactor != resolutionFactor)
+	//	{
+	//		resolutionFactor = _resolutionFactor;
+
+	//		Clear();
+	//		/*if (HasChannel(RADIANCE_PER_PIXEL_NORMALIZED)) {
+	//			for (u_int i = 0; i < radianceGroupCount; ++i) {
+	//				channel_RADIANCE_PER_PIXEL_NORMALIZEDs[i]->Clear();
+	//			}
+	//		}
+	//		if (HasChannel(RADIANCE_PER_SCREEN_NORMALIZED)) {
+	//			for (u_int i = 0; i < radianceGroupCount; ++i) {
+	//				channel_RADIANCE_PER_SCREEN_NORMALIZEDs[i]->Clear();
+	//			}
+	//		}*/
+	//		
+	//	}
+	//}
 }
