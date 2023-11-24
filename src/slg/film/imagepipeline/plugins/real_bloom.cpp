@@ -100,6 +100,7 @@ RealBloomPlugin::RealBloomPlugin() {
     blendExposure = -0.5f;
 	threshold = 0.f;
 	knee = 0.f;
+	firstTime = true;
 }
 
 RealBloomPlugin::~RealBloomPlugin() {
@@ -108,7 +109,7 @@ RealBloomPlugin::~RealBloomPlugin() {
 }
 
 ImagePipelinePlugin * RealBloomPlugin::Copy() const {
-	return new RealBloomPlugin(-0.5f,0.2f,0.f,0.f,"");
+	return new RealBloomPlugin(blendExposure, blendConv, threshold, knee, knlFilename);
 }
 
 //------------------------------------------------------------------------------

@@ -119,7 +119,8 @@ void closeMutex(HANDLE& hMutex)
 
 const std::string& getPathSeparator()
 {
-    static std::string pathSeparator = "\\";
+	static std::string pathSeparator = "/";
+
     return pathSeparator;
 }
 

@@ -1062,6 +1062,22 @@ set(SLG_FILM_SRCS
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/tonemaps/opencolorio.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/tonemaps/reinhard02.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/tonemaps/tonemap.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/real_bloom.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmImage.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmXYZ.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMF.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CMS.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ColorManagement/CmImageIO.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ModuleHelpers.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/Status.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/NumberHelpers.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/Misc.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/Random.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/ImageTransform.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/StringUtils.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Utils/Bilinear.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/ConvolutionFFT.cpp
+	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/RealBloom/Convolution.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/intel_oidn.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/whitebalance.cpp
 	${LuxRays_SOURCE_DIR}/src/slg/film/imagepipeline/plugins/optixdenoiser.cpp
