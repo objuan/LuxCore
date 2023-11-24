@@ -77,10 +77,10 @@ void IntelOIDN::FilterImage(const string &imageName,
     filter.setImage("output", dstBuffer, oidn::Format::Float3, width, height);
     filter.commit();
 
-    SLG_LOG("IntelOIDNPlugin executing " + imageName + " filter");
+   // SLG_LOG("IntelOIDNPlugin executing " + imageName + " filter");
 	const double startTime = WallClockTime();
     filter.execute();
-	SLG_LOG("IntelOIDNPlugin " + imageName + " filter took: " << (boost::format("%.1f") % (WallClockTime() - startTime)) << "secs");
+	//SLG_LOG("IntelOIDNPlugin " + imageName + " filter took: " << (boost::format("%.1f") % (WallClockTime() - startTime)) << "secs");
 
     const char *errorMessage;
     if (device.getError(errorMessage) != oidn::Error::None)
@@ -90,7 +90,7 @@ void IntelOIDN::FilterImage(const string &imageName,
 void IntelOIDN::Apply(Film &film, const u_int index) {
 	const double totalStartTime = WallClockTime();
 
-	SLG_LOG("[IntelOIDNPlugin] Applying single OIDN");
+	//SLG_LOG("[IntelOIDNPlugin] Applying single OIDN");
 
     Spectrum *pixels = (Spectrum *)film.channel_IMAGEPIPELINEs[index]->GetPixels();
 
@@ -146,7 +146,7 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
 			(normalBuffer.size() > 0) ? &normalBuffer[0] : nullptr,
 			width, height, enablePrefiltering);
 
-    SLG_LOG("IntelOIDNPlugin copying output buffer");
+ //   SLG_LOG("IntelOIDNPlugin copying output buffer");
     for (u_int i = 0; i < pixelCount; ++i) {
         const u_int i3 = i * 3;
         pixels[i].c[0] = Lerp(sharpness, outputBuffer[i3], pixels[i].c[0]);
@@ -154,7 +154,7 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
         pixels[i].c[2] = Lerp(sharpness, outputBuffer[i3 + 2], pixels[i].c[2]);
 	}
 
-	SLG_LOG("IntelOIDNPlugin single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
+	//SLG_LOG("IntelOIDNPlugin single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
 }
 
 #endif

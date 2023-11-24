@@ -250,6 +250,11 @@ public:
 	}
 
 	//--------------------------------------------------------------------------
+		// dynamic resolution factopr
+
+	u_int GetCameraWidth() const { return cameraWidth; }
+	u_int GetCameraHeight() const { return cameraHeight; }
+	void UpdateCamera(u_int w, u_int h);
 
 	u_int GetWidth() const { return width; }
 	u_int GetHeight() const { return height; }
@@ -538,6 +543,10 @@ private:
 	FilmDenoiser filmDenoiser;
 	
 	bool initialized;
+
+	// dynamic resolution factopr
+	u_int cameraWidth;
+	u_int cameraHeight;
 };
 
 template<> float *Film::GetChannel<float>(const FilmChannelType type, const u_int index, const bool executeImagePipeline);

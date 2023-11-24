@@ -25,6 +25,7 @@
 #include "luxrays/utils/thread.h"
 
 #include "slg/engines/bidircpu/bidircpu.h"
+//#include "slg/cameras/perspective.h"
 
 using namespace std;
 using namespace luxrays;
@@ -48,6 +49,12 @@ const Film::FilmChannels BiDirCPURenderThread::lightSampleResultsChannels({
 BiDirCPURenderThread::BiDirCPURenderThread(BiDirCPURenderEngine *engine,
 		const u_int index, IntersectionDevice *device) :
 		CPUNoTileRenderThread(engine, index, device) {
+
+
+	/*float lastResolutionFactor = engine->film->GetResolutionFactor();
+	float lastFilmWidth = engine->film->GetWidth();
+	float lastFilmHeight = engine->film->GetHeight();
+	float aspectRatio = lastFilmHeight / lastFilmWidth;*/
 }
 
 void BiDirCPURenderThread::AOVWarmUp(RandomGenerator *rndGen) {
@@ -724,7 +731,16 @@ void BiDirCPURenderThread::RenderFunc() {
 
 	RandomGenerator *rndGen = new RandomGenerator(engine->seedBase + 1 + threadIndex);
 	Scene *scene = engine->renderConfig->scene;
-	Camera *camera = scene->camera;
+	Camera * camera = scene->camera;
+
+	
+
+	//Camera* camera = new ProjectiveCamera(base_camera->GetType(), base_camera->);
+
+	//const CameraType type, const float* screenWindow,
+	//	const luxrays::Point& orig, const luxrays::Point& target,
+	//	const luxrays::Vector& up
+
 	PhotonGICache *photonGICache = engine->photonGICache;
 
 	// Albedo and Normal AOV warm up
@@ -777,6 +793,13 @@ void BiDirCPURenderThread::RenderFunc() {
 			continue;
 		}
 
+		if (camera->filmWidth  != engine->film->GetCameraWidth())
+		{
+			camera->Update(engine->film->GetCameraWidth(), engine->film->GetCameraHeight(), engine->film->GetSubRegion());
+		}
+
+		//SLG_LOG("[BiDirCPURenderThread::" << resoluctionFactor << "] resoluctionFactor");
+		// 
 		//----------------------------------------------------------------------
 		// Trace light path
 		//----------------------------------------------------------------------
@@ -784,7 +807,8 @@ void BiDirCPURenderThread::RenderFunc() {
 		const bool validLightPath = TraceLightPath(time, sampler, lensPoint, lightPathVertices, sampleResults);
 		assert (SampleResult::IsAllValid(sampleResults));
 
-		if (validLightPath) {
+		if (validLightPath) 
+		{
 			//------------------------------------------------------------------
 			// Trace eye path
 			//------------------------------------------------------------------
@@ -792,8 +816,11 @@ void BiDirCPURenderThread::RenderFunc() {
 			PathVertexVM eyeVertex;
 			SampleResult &eyeSampleResult = AddResult(sampleResults, false);
 
-			eyeSampleResult.filmX = sampler->GetSample(0);
-			eyeSampleResult.filmY = sampler->GetSample(1);
+			eyeSampleResult.filmX = sampler->GetSample(0)  * ((float)engine->film->GetCameraWidth() / engine->film->GetWidth()) ;
+			eyeSampleResult.filmY = sampler->GetSample(1) * ((float)engine->film->GetCameraHeight() / engine->film->GetHeight());
+
+			//SLG_LOG("[BiDirCPURenderThread:: filmX: " << eyeSampleResult.filmX <<" w: " << camera->filmWidth) ;
+
 			Ray eyeRay;
 			camera->GenerateRay(time,
 					eyeSampleResult.filmX, eyeSampleResult.filmY, &eyeRay,
@@ -989,8 +1016,12 @@ void BiDirCPURenderThread::RenderFunc() {
 		}
 	}
 
+	if (camera->filmWidth != engine->film->GetCameraWidth())
+		camera->Update(engine->film->GetWidth(), engine->film->GetHeight(), NULL);
+
 	delete sampler;
 	delete rndGen;
+	//delete camera;
 
 	threadDone = true;
 
