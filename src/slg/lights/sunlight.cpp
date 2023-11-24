@@ -101,6 +101,12 @@ void SunLight::Preprocess() {
 	RegularSPD LSPD(Ldata, 350, 800, 91);
 	color = ((temperatureScale * gain) / (relSize * relSize)) *
 			ColorSystem::DefaultColorSystem.ToRGBConstrained(LSPD.ToXYZ()).Clamp();
+
+	if (cpu.get() != nullptr)
+	{
+		OCIO::PackedImageDesc img(color.c, 1, 1, 3);
+		cpu->apply(img);
+	}
 }
 
 void SunLight::GetPreprocessedData(float *absoluteSunDirData,

@@ -62,6 +62,10 @@ public:
 	luxrays::Vector localSunDir;
 	float turbidity, relSize;
 
+	// colorspace
+	OCIO::ConstCPUProcessorRcPtr cpu;
+	ColorSpaceConfig colorSpaceConfig;
+
 private:
 	luxrays::Vector absoluteSunDir;
 	// XY Vectors for cone sampling

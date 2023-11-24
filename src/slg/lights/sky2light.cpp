@@ -198,13 +198,7 @@ Spectrum SkyLight2::ComputeRadiance(const Vector &w) const {
 	else
 		radiance= temperatureScale * gain * ComputeSkyRadiance(w);
 
-	//if (colorSpaceConv != nullptr)
-	if (cpu.get() != nullptr)
-	{
-		//cpu->ConvertFrom(colorSpaceConfig, radiance);
-		OCIO::PackedImageDesc img(radiance.c, 1, 1, 3);
-		cpu->apply(img);
-	}
+	
 
 	return radiance;
 }
@@ -214,6 +208,17 @@ void SkyLight2::Preprocess() {
 
 	absoluteSunDir = Normalize(lightToWorld * localSunDir);
 	absoluteUpDir = Normalize(lightToWorld * Vector(0.f, 0.f, 1.f));
+
+	if (cpu.get() != nullptr)
+	{
+		//cpu->ConvertFrom(colorSpaceConfig, radiance);
+		OCIO::PackedImageDesc img(groundColor.c, 1, 1, 3);
+		cpu->apply(img);
+
+		OCIO::PackedImageDesc img2(groundAlbedo.c, 1, 1, 3);
+		cpu->apply(img2);
+
+	}
 
 	ComputeModel(turbidity, groundAlbedo, M_PI * .5f - SphericalTheta(absoluteSunDir), model);
 
