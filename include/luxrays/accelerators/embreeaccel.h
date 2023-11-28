@@ -21,7 +21,7 @@
 
 #include <boost/thread.hpp>
 
-#ifndef EMBREE4
+#ifdef WINDOWS 
 #include <embree3/rtcore.h>
 #else
 #include <embree4/rtcore.h>
