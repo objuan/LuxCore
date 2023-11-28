@@ -125,6 +125,7 @@ public:
 
 	BSDFEvent GetEventTypes() const { return material->GetEventTypes(); }
 	MaterialType GetMaterialType() const { return material->GetType(); }
+	const Material *GetMaterial() const { return material; }
 
 	luxrays::Spectrum GetPassThroughTransparency(const bool backTracing) const;
 	const luxrays::Spectrum &GetPassThroughShadowTransparency() const { return material->GetPassThroughShadowTransparency(); }

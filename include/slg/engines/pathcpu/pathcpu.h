@@ -29,6 +29,8 @@
 #include "slg/bsdf/bsdf.h"
 #include "slg/utils/pathdepthinfo.h"
 
+class PathGuiding;
+
 namespace slg {
 
 //------------------------------------------------------------------------------
@@ -69,6 +71,10 @@ public:
 	static RenderEngine *FromProperties(const RenderConfig *rcfg);
 
 	friend class PathCPURenderThread;
+
+	virtual void UpdateProperties(const luxrays::Properties& cfg);
+
+	PathGuiding* pathGuiding;
 
 protected:
 	static const luxrays::Properties &GetDefaultProps();

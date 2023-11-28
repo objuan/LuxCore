@@ -51,6 +51,7 @@
 #include "slg/lights/strategies/lightstrategyregistry.h"
 #include "slg/utils/filenameresolver.h"
 
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
@@ -171,6 +172,14 @@ void RenderConfig::Parse(const Properties &props) {
 	u_int *subRegion = Film::GetFilmSize(cfg, &filmFullWidth, &filmFullHeight, filmSubRegion) ?
 		filmSubRegion : NULL;
 	scene->camera->Update(filmFullWidth, filmFullHeight, subRegion);
+
+	if (props.IsDefined("probe.winpos"))
+	{
+		const Property p= props.Get("probe.winpos");
+		float mx = p.Get<float>(0);
+		float my = p.Get<float>(1);
+		scene->testProbe = Point(mx, my);
+	}
 }
 
 void RenderConfig::DeleteAllFilmImagePipelinesProperties() {

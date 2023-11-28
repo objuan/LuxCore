@@ -151,4 +151,37 @@ void LuxCoreApp::GLFW_MouseButtonCallBack(GLFWwindow *window, int button, int ac
 			app->mouseButton2 = false;
 		}
 	}
+	else if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+		if (action == GLFW_PRESS) {
+			// Record start position
+			glfwGetCursorPos(window, &app->mouseGrabLastX, &app->mouseGrabLastY);
+
+			Properties cfgProps;
+			cfgProps <<
+				Property("probe.winpos")(app->mouseGrabLastX, app->mouseGrabLastY);
+			app->config->Parse(cfgProps);
+
+		//	app->session->BeginSceneEdit();
+		//	app->config->GetScene().GetCamera().RotateRight(app->optRotateStep);
+		//	app->session->EndSceneEdit();
+
+
+			//app->session->GetFilm();
+		/*	Scene::get
+
+			RayHit eyeRayHit;
+			Spectrum connectionThroughput;
+			const bool hit = scene->Intersect(device,
+				EYE_RAY | (eyeSampleResult.firstPathVertex ? CAMERA_RAY : INDIRECT_RAY),
+				&eyeVertex.volInfo, sampler->GetSample(sampleOffset),
+				&eyeRay, &eyeRayHit, &eyeVertex.bsdf,
+				&connectionThroughput, &eyeVertex.throughput, &eyeSampleResult);*/
+
+			int y = 0;
+			//app->mouseButton2 = true;
+		}
+		else if (action == GLFW_RELEASE) {
+			//app->mouseButton2 = false;
+		}
+	}
 }

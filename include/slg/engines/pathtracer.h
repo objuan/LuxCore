@@ -135,7 +135,7 @@ public:
 	static const luxrays::Properties &GetDefaultProps();
 
 	// Used for Sampler indices
-	u_int eyeSampleBootSize, eyeSampleStepSize, eyeSampleSize;
+	u_int eyeSampleBootSize, eyeSampleStepSize, eyeSampleSize, eyeSampleGuiding;
 	u_int lightSampleBootSize, lightSampleStepSize, lightSampleSize;
 
 	// Path depth settings
@@ -161,6 +161,14 @@ private:
 	void GenerateEyeRay(const Camera *camera, const Film *film,
 			luxrays::Ray &eyeRay, PathVolumeInfo &volInfo,
 			Sampler *sampler, SampleResult &sampleResult) const;
+
+	bool SampleBSDF(BSDF* bsdf, luxrays::Vector* sampledDir,
+		const float u0, const float u1, luxrays::Spectrum* result,
+		float* pdfW, float* absCosSampledDir,
+		BSDFEvent* event) const;
+
+	luxrays::Spectrum ShadowCatcherSample(BSDF* bsdf, luxrays::Vector* sampledDir,
+		float* pdfW, float* absCosSampledDir, BSDFEvent* event) const;
 
 	// RenderEyeSample methods
 

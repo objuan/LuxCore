@@ -23,9 +23,21 @@
 #include "slg/utils/varianceclamping.h"
 #include "slg/samplers/metropolis.h"
 
+
+#include "slg/engines/bidircpubgl/guiding.h"
+
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
+
+std::ofstream* log_file=NULL;
+PathGuiding *pathGuiding=NULL;
+
+//bool kernel_data::use_guiding_direct_light = true;
+//bool kernel_data::use_guiding_mis_weights = true;
+//float kernel_data::surface_guiding_probability = 1;
+Point old;
 
 //------------------------------------------------------------------------------
 // PathCPU RenderThread
@@ -39,6 +51,7 @@ PathCPURenderThread::PathCPURenderThread(PathCPURenderEngine *engine,
 void PathCPURenderThread::RenderFunc() {
 	//SLG_LOG("[PathCPURenderEngine::" << threadIndex << "] Rendering thread started");
 
+	
 	//--------------------------------------------------------------------------
 	// Initialization
 	//--------------------------------------------------------------------------
@@ -52,6 +65,9 @@ void PathCPURenderThread::RenderFunc() {
 	// (engine->seedBase + 1) seed is used for sharedRndGen
 	RandomGenerator *rndGen = new RandomGenerator(engine->seedBase + 1 + threadIndex);
 
+	Scene* scene = engine->renderConfig->scene;
+	Camera* camera = scene->camera;
+
 	// Setup the sampler(s)
 
 	Sampler *eyeSampler = nullptr;
@@ -60,8 +76,30 @@ void PathCPURenderThread::RenderFunc() {
 	eyeSampler = engine->renderConfig->AllocSampler(rndGen, engine->film,
 			nullptr, engine->samplerSharedData, Properties());
 	eyeSampler->SetThreadIndex(threadIndex);
-	eyeSampler->RequestSamples(PIXEL_NORMALIZED_ONLY, pathTracer.eyeSampleSize);
+	eyeSampler->RequestSamples(PIXEL_NORMALIZED_ONLY, pathTracer.eyeSampleSize+ PathGuiding::SampleSize);
 
+	//PathGuiding::InitializeKernel();
+	// ==============
+	
+	//log_file = new std::ofstream("C:\\Lavoro\\luxcorerender\\WindowsCompile\\Build_CMake\\LuxCore\\bin\\Debug\\guide_log.txt", std::ios_base::out );
+
+	//	if (pathGuiding==NULL)
+	float guiding_blend_factor = 0.0f;
+	if (engine->renderConfig->cfg.HaveNames("path.guiding.blend_factor"))
+		guiding_blend_factor = engine->renderConfig->cfg.Get("path.guiding.blend_factor").Get<float>();
+	if (pathGuiding != NULL)
+	{
+		guiding_blend_factor = pathGuiding->kg->data.surface_guiding_probability;
+		delete pathGuiding;
+	}
+
+	pathGuiding = new PathGuiding(engine, threadIndex, eyeSampler, pathTracer.eyeSampleSize);
+	engine->pathGuiding = pathGuiding;
+	//engine->pathGuiding->enabled = guiding_blend_factor > 0.1f;
+	pathGuiding->kg->data.surface_guiding_probability = guiding_blend_factor;
+
+	SLG_LOG("PathCPURenderThread: guiding_blend_factor" << pathGuiding->kg->data.surface_guiding_probability);
+	// ==============
 	if (pathTracer.hybridBackForwardEnable) {
 		// Light path sampler is always Metropolis
 		Properties props;
@@ -122,6 +160,30 @@ void PathCPURenderThread::RenderFunc() {
 				break;
 			}
 		}
+
+		/// <summary>
+		/// ============
+		/// 
+		/// 
+	//	if (engine->pathGuiding->state->use_surface_guiding)
+		{
+			pathGuiding->guiding_push_sample_data_to_global_storage();
+
+			/// 
+			const size_t num_valid_samples = pathGuiding->kg->opgl_sample_data_storage->GetSizeSurface() +
+				pathGuiding->kg->opgl_sample_data_storage->GetSizeVolume();
+			//if (num_valid_samples >= 1024)
+			if (num_valid_samples >= 20000 )
+			{
+				pathGuiding->kg->opgl_guiding_field->Update(*pathGuiding->kg->opgl_sample_data_storage);
+				pathGuiding->kg->opgl_sample_data_storage->Clear();
+			}
+		}
+
+		/// </summary>
+	/*	
+		if (steps > 300000)
+			break;*/
 	}
 
 	delete eyeSampler;
@@ -135,6 +197,131 @@ void PathCPURenderThread::RenderFunc() {
 	// halt condition is satisfied.
 	if (engine->photonGICache)
 		engine->photonGICache->FinishUpdate(threadIndex);
+
+	// ===================================
+
+	Point probe = scene->testProbe;
+
+
+	// =============
+	float srand = 0;
+	float3 rand_bsdf(0, 0);
+
+	if (false)
+	{
+		engine->film->channel_IRRADIANCE->Clear();
+		for (int x = 0; x < engine->film->GetWidth(); x++)
+		{
+			for (int y = 0; y < engine->film->GetHeight(); y++)
+			{
+				float val[] = { 0,1,0,1 };
+
+				RayHit rayHit;
+				Ray ray;
+
+				camera->GenerateRay(0,
+					x, y, &ray,
+					new PathVolumeInfo(), 0, 0);
+
+				bool hit = device->TraceRay(&ray, &rayHit);
+				if (hit)
+				{
+					Point p;
+					Normal n;
+
+					// Check if it a triangle with bevel edges
+					bool bevelContinueToTrace;
+					const ExtMesh* mesh = scene->objDefs.GetSceneObject(rayHit.meshIndex)->GetExtMesh();
+
+					Transform local2world;
+					mesh->GetLocal2World(ray.time, local2world);
+					n = mesh->GetGeometryNormal(local2world, rayHit.triangleIndex);
+
+
+					float3 P = ray.o + ray.d * rayHit.t;
+					float3 N = float3(n.x, n.y, n.z);
+					float3 d = float3(ray.d.x, ray.d.y, ray.d.z);
+
+					float rand_bsdf_guiding = 0;// eyeSampler->GetSample(2);//TIODO
+
+					if (pathGuiding->guiding_bsdf_init(P, N, srand))
+					{
+
+						float3 dirOut;
+						float guide_pdf = pathGuiding->guiding_bsdf_sample(rand_bsdf, &dirOut);
+
+						// 
+		//				float val[] = { 1,0,0,1 };
+					//	float val[] = { N.x,N.y,N.z,1 };
+						//float val[] = { pdf,0,0,1 };
+						float val[] = { dirOut.x,dirOut.y,dirOut.z,1 };
+						engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+					}
+					else
+					{
+						float val[] = { 1,0,0,1 };
+						engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+					}
+				}
+				else
+				{
+					float val[] = { 0,0,1,1 };
+					engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+				}
+				//bool hit = device ? device->TraceRay(ray, rayHit) : dataSet->GetAccelerator(ACCEL_EMBREE)->Intersect(ray, rayHit);
+
+				//guiding_bsdf_init(&kd,&state, );
+
+
+			}
+		}
+	}
+
+	while (false)
+	{
+		RayHit rayHit;
+		Ray ray;
+		
+		if (old.x != scene->testProbe.x || old.y!= scene->testProbe.y)
+		{
+			old = scene->testProbe;
+			camera->GenerateRay(0,
+				scene->testProbe.x, scene->testProbe.y, &ray,
+				new PathVolumeInfo(), 0, 0);
+
+			bool hit = device->TraceRay(&ray, &rayHit);
+			if (hit)
+			{
+				Point p;
+				Normal n;
+
+				// Check if it a triangle with bevel edges
+				bool bevelContinueToTrace;
+				const ExtMesh* mesh = scene->objDefs.GetSceneObject(rayHit.meshIndex)->GetExtMesh();
+
+				Transform local2world;
+				mesh->GetLocal2World(ray.time, local2world);
+				n = mesh->GetGeometryNormal(local2world, rayHit.triangleIndex);
+
+
+				float3 P = ray.o + ray.d * rayHit.t;
+				float3 N = float3(n.x, n.y, n.z);
+				float3 d = float3(ray.d.x, ray.d.y, ray.d.z);
+
+				float rand_bsdf_guiding = 0;// eyeSampler->GetSample(2);//TIODO
+
+				if (pathGuiding->guiding_bsdf_init(P, N, srand))
+				{
+					float3 dirOut;
+					float guide_pdf = pathGuiding->guiding_bsdf_sample(rand_bsdf, &dirOut);
+					SLG_LOG("PROBE: " << scene->testProbe.x << "," << scene->testProbe.y
+						<< " pdf " << guide_pdf << " dir " << dirOut);
+				}
+			}
+		}
+
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+	}
 
 	//SLG_LOG("[PathCPURenderEngine::" << threadIndex << "] Rendering thread halted");
 }

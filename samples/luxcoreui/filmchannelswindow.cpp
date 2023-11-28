@@ -190,6 +190,17 @@ void FilmChannelsWindow::Close() {
 		ObjectWindow::Close();
 	}
 }
+bool start = true;
+
+void FilmChannelsWindow::SetStart()
+{
+	//FilmChannelWindow* cw = new FilmChannelWindow(app,
+	//	"IRRA", Film::CHANNEL_IRRADIANCE, 0);
+	//cw->Open();
+	//filmChannelWindows["31#0"] = cw;
+
+	//filmChannelWindows["31#0"]->Open();
+}
 
 void FilmChannelsWindow::DeleteAllWindow() {
 	// First close all windows
@@ -404,6 +415,17 @@ void FilmChannelsWindow::Draw() {
 	ImGui::End();
 
 	if (opened) {
+		/*if (start)
+		{
+			start = false;
+			FilmChannelWindow* cw = new FilmChannelWindow(app,
+				"IRRA", Film::CHANNEL_IRRADIANCE, 0);
+			cw->Open();
+			filmChannelWindows["31#0"] = cw;
+
+			filmChannelWindows["31#0"]->Open();
+			cw->imgScale = 50.0f;
+		}*/
 		// Draw all channel windows
 		BOOST_FOREACH(FilmChannelWindowMap::value_type e, filmChannelWindows)
 			e.second->Draw();

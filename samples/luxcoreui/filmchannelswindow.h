@@ -53,7 +53,7 @@ public:
 	virtual void Open();
 	virtual void Close();
 	virtual void Draw();
-
+	void SetStart();
 	friend class FilmChannelWindow;
 
 private:

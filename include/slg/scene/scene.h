@@ -188,6 +188,8 @@ public:
 
 	friend class boost::serialization::access;
 
+	luxrays::Point testProbe;
+
 private:
 	ColorSpaceConverters colorSpaceConv;
 

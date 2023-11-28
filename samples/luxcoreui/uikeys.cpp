@@ -32,6 +32,8 @@ using namespace std;
 using namespace luxrays;
 using namespace luxcore;
 
+float guinding_blend_factor=0.5;
+
 //------------------------------------------------------------------------------
 // Key bindings
 //------------------------------------------------------------------------------
@@ -337,6 +339,33 @@ void LuxCoreApp::GLFW_KeyCallBack(GLFWwindow *window, int key, int scanCode, int
 			case GLFW_KEY_J:
 				app->statsWindow.Toggle();
 				break;
+
+			case GLFW_KEY_KP_SUBTRACT:
+			{
+				app->session->BeginSceneEdit();
+				Properties props;
+				guinding_blend_factor -= 0.1f;
+				if (guinding_blend_factor < 0) guinding_blend_factor = 0;
+				props << Property("path.guiding.blend_factor")(guinding_blend_factor);
+				app->session->Parse(props);
+
+				app->session->EndSceneEdit();
+
+				break;
+			}
+
+			case GLFW_KEY_KP_ADD:
+			{
+				app->session->BeginSceneEdit();
+				Properties props;
+				guinding_blend_factor += 0.1f;
+				if (guinding_blend_factor > 1) guinding_blend_factor = 1;
+				props << Property("path.guiding.blend_factor")(guinding_blend_factor);
+				app->session->Parse(props);
+
+				app->session->EndSceneEdit();
+				break;
+			}
 			default:
 				break;
 		}

@@ -38,10 +38,24 @@ GlassMaterial::GlassMaterial(const Texture *frontTransp, const Texture *backTran
 			cauchyB(B), filmThickness(filmThickness), filmIor(filmIor) {
 }
 
-Spectrum GlassMaterial::Evaluate(const HitPoint &hitPoint,
-	const Vector &localLightDir, const Vector &localEyeDir, BSDFEvent *event,
-	float *directPdfW, float *reversePdfW) const {
-	return Spectrum();
+static float WaveLength2IOR(const float waveLength, const float IOR, const float B) {
+	// Cauchy's equation for relationship between the refractive index and wavelength
+	// note: Cauchy's lambda is expressed in micrometers while waveLength is in nanometers
+
+	// This is the formula suggested by Neo here, with a changed naming convention from B->A and C-> B:
+	// https://github.com/LuxCoreRender/BlendLuxCore/commit/d3fed046ab62e18226e410b42a16ca1bccefb530#commitcomment-26617643
+
+	// Compute Cauchy-A assuming the user input IOR at 587.56 nm 
+	// (Fraunhofer d-line, Helium, used in one definition of the Abbe number)
+	//const float A = IOR - B / Sqr(587.56f / 1000.f);
+
+	// Use the user input IOR directly as Cauchy-A. Equivalent to the B used by old LuxRender.
+	const float A = IOR;
+
+	// Cauchy's equation
+	const float cauchyEq = A + B / Sqr(waveLength / 1000.f);
+
+	return cauchyEq;
 }
 
 static Spectrum WaveLength2RGB(const float waveLength) {
@@ -50,27 +64,33 @@ static Spectrum WaveLength2RGB(const float waveLength) {
 		r = -(waveLength - 440.f) / (440 - 380.f);
 		g = 0.f;
 		b = 1.f;
-	} else if ((waveLength >= 440.f) && (waveLength < 490.f)) {
+	}
+	else if ((waveLength >= 440.f) && (waveLength < 490.f)) {
 		r = 0.f;
 		g = (waveLength - 440.f) / (490.f - 440.f);
 		b = 1.f;
-	} else if ((waveLength >= 490.f) && (waveLength < 510.f)) {
+	}
+	else if ((waveLength >= 490.f) && (waveLength < 510.f)) {
 		r = 0.f;
 		g = 1.f;
 		b = -(waveLength - 510.f) / (510.f - 490.f);
-	} else if ((waveLength >= 510.f) && (waveLength < 580.f)) {
+	}
+	else if ((waveLength >= 510.f) && (waveLength < 580.f)) {
 		r = (waveLength - 510.f) / (580.f - 510.f);
 		g = 1.f;
 		b = 0.f;
-	} else if ((waveLength >= 580.f) && (waveLength < 645.f)) {
+	}
+	else if ((waveLength >= 580.f) && (waveLength < 645.f)) {
 		r = 1.f;
 		g = -(waveLength - 645.f) / (645 - 580.f);
 		b = 0.f;
-	} else if ((waveLength >= 645.f) && (waveLength < 780.f)) {
+	}
+	else if ((waveLength >= 645.f) && (waveLength < 780.f)) {
 		r = 1.f;
 		g = 0.f;
 		b = 0.f;
-	} else
+	}
+	else
 		return Spectrum();
 
 	// The intensity fall off near the upper and lower limits
@@ -90,35 +110,144 @@ static Spectrum WaveLength2RGB(const float waveLength) {
 		white += WaveLength2RGB(i);
 	white *= 1.f / 400.f;
 	cout << std::setprecision(std::numeric_limits<float>::digits10 + 1) << white.c[0] << ", " << white.c[1] << ", " << white.c[2] << "\n";
-	 
+
 	 Result: 0.5652729, 0.36875, 0.265375
 	 */
 
-	// To normalize the output
+	 // To normalize the output
 	const Spectrum normFactor(1.f / .5652729f, 1.f / .36875f, 1.f / .265375f);
-	
+
 	return result * normFactor;
 }
 
-static float WaveLength2IOR(const float waveLength, const float IOR, const float B) {
-	// Cauchy's equation for relationship between the refractive index and wavelength
-	// note: Cauchy's lambda is expressed in micrometers while waveLength is in nanometers
+Spectrum GlassMaterial::Evaluate(const HitPoint &hitPoint,
+	const Vector &localLightDir, const Vector &localEyeDir, BSDFEvent *event,
+	float *directPdfW, float *reversePdfW) const {
+	//return Spectrum();
 
-	// This is the formula suggested by Neo here, with a changed naming convention from B->A and C-> B:
-	// https://github.com/LuxCoreRender/BlendLuxCore/commit/d3fed046ab62e18226e410b42a16ca1bccefb530#commitcomment-26617643
-	
-	// Compute Cauchy-A assuming the user input IOR at 587.56 nm 
-	// (Fraunhofer d-line, Helium, used in one definition of the Abbe number)
-	//const float A = IOR - B / Sqr(587.56f / 1000.f);
+	const Spectrum kr = Kr->GetSpectrumValue(hitPoint).Clamp(0.f, 1.f);
+	const Spectrum kt = Kt->GetSpectrumValue(hitPoint).Clamp(0.f, 1.f);
 
-	// Use the user input IOR directly as Cauchy-A. Equivalent to the B used by old LuxRender.
-	const float A = IOR;
+	const float nc = ExtractExteriorIors(hitPoint, exteriorIor);
+	const float nt = ExtractInteriorIors(hitPoint, interiorIor);
 
-	// Cauchy's equation
-	const float cauchyEq = A + B / Sqr(waveLength / 1000.f);
+	const float cauchyBValue = cauchyB ? cauchyB->GetFloatValue(hitPoint) : 0.f;
 
-	return cauchyEq;
+	Vector localFixedDir = localEyeDir;
+	// ===========================
+	Spectrum trans;
+	// 
+	//const Spectrum trans = EvalSpecularTransmission(hitPoint, localFixedDir, u0,
+	//	kt, nc, nt, cauchyBValue, &transLocalSampledDir);
+
+	if (kt.Black())
+		trans=  Spectrum();
+	else
+	{
+		// Compute transmitted ray direction
+		Spectrum lkt;
+		float lnt;
+		if (cauchyBValue > 0.f) {
+			// Select the wavelength to sample
+			float u0 = 0.5f;
+			const float waveLength = Lerp(u0, 380.f, 780.f);
+
+			lnt = WaveLength2IOR(waveLength, nt, cauchyBValue);
+
+			lkt = kt * WaveLength2RGB(waveLength);
+		}
+		else {
+			lnt = nt;
+			lkt = kt;
+		}
+
+		const float ntc = lnt / nc;
+		const float cosTheta = CosTheta(localFixedDir);
+		const bool entering = (cosTheta > 0.f);
+		const float eta = entering ? (nc / lnt) : ntc;
+		const float eta2 = eta * eta;
+		const float sini2 = SinTheta2(localFixedDir);
+		const float sint2 = eta2 * sini2;
+
+		// Handle total internal reflection for transmission
+		if (sint2 >= 1.f)
+			trans= Spectrum();
+		else
+		{
+			const float cost = sqrtf(Max(0.f, 1.f - sint2)) * (entering ? -1.f : 1.f);
+			//localSampledDir = Vector(-eta * localFixedDir.x, -eta * localFixedDir.y, cost);
+
+			float ce;
+			if (!hitPoint.fromLight)
+				ce = (1.f - FresnelTexture::CauchyEvaluate(ntc, cost)) * eta2;
+			else {
+				const float absCosSampledDir = fabsf(CosTheta(localLightDir));
+				ce = (1.f - FresnelTexture::CauchyEvaluate(ntc, cosTheta)) * fabsf(CosTheta(localFixedDir) / absCosSampledDir);
+			}
+
+			trans = lkt * ce;
+		}
+
+	}
+	// ===========================
+
+
+	const float localFilmThickness = filmThickness ? filmThickness->GetFloatValue(hitPoint) : 0.f;
+	const float localFilmIor = (localFilmThickness > 0.f && filmIor) ? filmIor->GetFloatValue(hitPoint) : 1.f;
+	Vector reflLocalSampledDir;
+	const Spectrum refl = EvalSpecularReflection(hitPoint, localEyeDir,
+		kr, nc, nt, &reflLocalSampledDir, localFilmThickness, localFilmIor);
+
+	// Decide to transmit or reflect
+	float threshold;
+	if (!refl.Black()) {
+		if (!trans.Black()) {
+			// Importance sampling
+			const float reflFilter = refl.Filter();
+			const float transFilter = trans.Filter();
+			threshold = transFilter / (reflFilter + transFilter);
+
+			// A place an upper and lower limit to not under sample
+			// reflection or transmission
+			threshold = Clamp(threshold, .25f, .75f);
+		}
+		else
+			threshold = 0.f;
+	}
+	else {
+		if (!trans.Black())
+			threshold = 1.f;
+		else
+			return Spectrum();
+	}
+
+	float pdfW;
+	Spectrum result;
+	float passThroughEvent = hitPoint.passThroughEvent;
+	if (passThroughEvent < threshold) {
+		// Transmit
+		*event = SPECULAR | TRANSMIT;
+		pdfW = threshold;
+
+		result = trans;
+	}
+	else {
+		// Reflect
+
+		*event = SPECULAR | REFLECT;
+		pdfW = 1.f - threshold;
+
+		result = refl;
+	}
+
+	if (directPdfW)
+		*directPdfW = pdfW;
+	if (reversePdfW)
+		*reversePdfW = pdfW;
+
+	return result;// / pdfW;
 }
+
 
 Spectrum GlassMaterial::EvalSpecularReflection(const HitPoint &hitPoint,
 		const Vector &localFixedDir, const Spectrum &kr,
@@ -259,6 +388,9 @@ Spectrum GlassMaterial::Sample(const HitPoint &hitPoint,
 void GlassMaterial::Pdf(const HitPoint &hitPoint,
 		const luxrays::Vector &localLightDir, const luxrays::Vector &localEyeDir,
 	float *directPdfW, float *reversePdfW) const {
+
+
+
 	if (directPdfW)
 		*directPdfW = 0.f;
 	if (reversePdfW)

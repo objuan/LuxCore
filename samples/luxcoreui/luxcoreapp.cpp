@@ -371,6 +371,9 @@ void LuxCoreApp::StartRendering(RenderState *startState, Film *startFilm) {
 		delete session;
 		session = NULL;
 	}
+
+	//filmChannelsWindow.Open();
+	//filmChannelsWindow.SetStart();
 }
 
 void LuxCoreApp::DeleteRendering() {

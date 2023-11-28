@@ -11,3 +11,47 @@ probability density function (PDF) is used to define the optimal directions for 
 The PDF is a normalized function, where the integral over the entire domain of the function is 1 and the peaks represent important regions for sampling.
 
 we multiply each sample by the inverse of the PDF. This yields a Monte Carlo estimator that uses the weighted average of all the samples:
+
+
+
+
+CYCLE
+//  Re-sampled Importance Sampling(RIS) 
+_device int surface_shader_bsdf_guided_sample_closure_ris(
+                                                             ccl_private ShaderData *sd,
+                                                             ccl_private const ShaderClosure *sc,
+                                                             const float3 rand_bsdf,
+                                                             ccl_private const RNGState *rng_state,
+                                                             ccl_private BsdfEval *bsdf_eval,
+                                                             ccl_private float3 *wo,
+                                                             ccl_private float *bsdf_pdf,
+                                                             ccl_private float *mis_pdf,
+                                                             ccl_private float *unguided_bsdf_pdf,
+                                                             ccl_private float2 *sampled_roughness,
+                                                             ccl_private float *eta
+
+    1) bsdf_sample (rand, sd.wi , sd.N) = > (Spectrum *eval , wo, bsdf_pdf,sampled_roughness, eta);
+    2) bsdf_eval_init(wo, eval * sc->weight  ) => bsdf_eval 
+ 
+         guiding_bsdf_sample( rand ) => (guide_pdf, wo1 )
+         guide_pdf *= (1.0f - bssrdf_sampling_prob);
+         incoming_radiance_pdf = guiding_surface_incoming_radiance_pdf(wo1) 
+         bsdf_pdf = surface_shader_bsdf_eval_pdfs( wo1 , bsdf_eval ,  unguided_bsdf_pdfs);
+    
+
+
+    // CASO NON GUIDA
+
+    // SAMPLE , 2 fasi
+    
+    bsdf_sample(rand,sd.wi , sd.N)    => (Spectrum eval , wo , pdf ,sampled_roughness , eta)
+    
+    //split between diffuse and glossy.
+    bsdf_eval_init(wo, Spectrum value) => BsdfEval(diffuse , glossy , sum = value) // fa solo copia da value
+    // se ci sono + num_closure, fa la media
+    surface_shader_bsdf_eval_mis(wo ) => (result_eval,sum_pdf,sum_sample_weight)
+    // if use_surface_guiding
+        guide_pdf = guiding_bsdf_pdf(wo);
+        // peso
+        bsdf_pdf *= 1.0f - guiding_sampling_prob;
+        bsdf_pdf += guiding_sampling_prob * guide_pdf * (1.0f - bssrdf_sampling_prob);

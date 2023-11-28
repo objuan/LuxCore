@@ -26,9 +26,21 @@
 
 #include "slg/engines/bidircpu/bidircpu.h"
 
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
+
+//#define PATH_GUIDING_LEVEL 4
+//#include "slg/engines/bidircpubgl/guiding.h"
+//
+//
+//KernelGlobals kg;
+//IntegratorState state;
+//
+//bool kernel_data::use_guiding_direct_light = true;
+//bool kernel_data::use_guiding_mis_weights = true;
+//float kernel_data::surface_guiding_probability = 1;
 
 //------------------------------------------------------------------------------
 // BiDirCPU RenderThread
@@ -614,12 +626,17 @@ bool BiDirCPURenderThread::TraceLightPath(const float time,
 				if (!lightVertex.bsdf.IsDelta()) {
 					lightPathVertices.push_back(lightVertex);
 
+				/*	guiding_record_surface_segment(&kg, &state, lightVertex.bsdf.hitPoint.p,
+						lightVertex.bsdf.hitPoint.fixedDir);*/
+
 					//----------------------------------------------------------
 					// Try to connect the light path vertex with the eye
 					//----------------------------------------------------------
 
 					ConnectToEye(time, lightVertex, sampler->GetSample(sampleOffset + 1),
 							lensPoint, sampleResults);
+
+					//guiding_bsdf_init(&kg, &state, lightVertex.bsdf.hitPoint.p,)
 				}
 
 				if (lightVertex.depth >= engine->maxLightPathDepth)
@@ -706,11 +723,98 @@ bool BiDirCPURenderThread::Bounce(const float time, Sampler *sampler,
 
 	++pathVertex->depth;
 
+	// ============
+
+	//float2 bsdf_sampled_roughness = float2(1.0f, 1.0f);
+	//float bsdf_eta = 1.0f;
+	//float mis_pdf = 1.0f;
+
+	//Normal N = pathVertex->bsdf.hitPoint.geometryN;
+	//float3 d = float3(nextEventRay->d.x, nextEventRay->d.y, nextEventRay->d.z);
+	//guiding_record_surface_bounce(&kg, &state, bsdfSample, bsdfPdfW,
+	//	float3(N.x, N.y, N.z), d, bsdf_sampled_roughness, bsdf_eta);
+
 	return true;
 }
 
+//void guiding_prepare_structures(openpgl::cpp::Field* guiding_field)
+//{
+//
+//	int training_samples = 0;
+//	const bool train = (training_samples == 0) ||
+//		(guiding_field->GetIteration() < training_samples);
+//
+//	for (auto&& path_trace_work : path_trace_works_) {
+//		path_trace_work->guiding_init_kernel_globals(
+//			guiding_field.get(), guiding_sample_data_storage, train);
+//	}
+//	if (train) {
+//		/* For training the guiding distribution we need to force the number of samples
+//		 * per update to be limited, for reproducible results and reasonable training size.
+//		 *
+//		 * Idea: we could stochastically discard samples with a probability of 1/num_samples_per_update
+//		 * we can then update only after the num_samples_per_update iterations are rendered. */
+//		render_scheduler_.set_limit_samples_per_update(4);
+//	}
+//	else {
+//		render_scheduler_.set_limit_samples_per_update(0);
+//	}
+//}
+
 void BiDirCPURenderThread::RenderFunc() {
 	//SLG_LOG("[BiDirCPURenderThread::" << threadIndex << "] Rendering thread started");
+
+	//openpgl::cpp::Device odevice(PGL_DEVICE_TYPE_CPU_4);
+
+	///* The storage container which holds the training data/samples generated during the last rendering iteration. */
+	//openpgl::cpp::SampleStorage* guiding_sample_data_storage = new openpgl::cpp::SampleStorage();
+	////guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
+
+	//PGLFieldArguments fieldArgs;
+
+	//pglFieldArgumentsSetDefaults(fieldArgs, PGL_SPATIAL_STRUCTURE_KDTREE, PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM);
+
+	////	openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(odevice, field_args);
+
+	//	 /* The guiding field which holds the representation of the incident radiance field for the
+	//   * complete scene. */
+
+	//openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(&odevice, fieldArgs);
+
+	//
+
+	///* The number of already performed training iterations for the guiding field. */
+	//int guiding_update_count = 0;
+
+	//std::cout << "Field created successfully... exiting\n";
+
+	////	openpgl::cpp::SurfaceSamplingDistribution *opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
+	//	//openpgl::cpp::SurfaceSamplingDistribution * opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
+
+	//	//FIELD
+	//	// This information can be the incidence radiance field learned from several training iterations across the whole scene
+	//	// The Field holds separate approximations for surfaceand volumetric radiance distributions,
+	//	// which can be accessed separately.The representation of a scene’s radiance distribution is usually separated into a positionaland directional representation
+	//	// using a spatial subdivision structure.
+	//	// Each spatial leaf node(a.k.a.Region) contains a directional representation for the local incident radiance distribution.
+
+	//// condivise
+	//kg.opgl_sample_data_storage = guiding_sample_data_storage;
+	//kg.opgl_guiding_field = guiding_field; // conserva le info della radiance
+
+
+	//kg.opgl_path_segment_storage = new openpgl::cpp::PathSegmentStorage();
+	//kg.opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
+	//kg.opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
+
+	//int transparent_max_bounce = 128;
+	//int max_bounce = 256;
+	//bool train = true;
+	//if (train) {
+	//	kg.opgl_path_segment_storage->Reserve(transparent_max_bounce + max_bounce + 3);
+	//	kg.opgl_path_segment_storage->Clear();
+	//}
+
 
 	//--------------------------------------------------------------------------
 	// Initialization
@@ -784,7 +888,8 @@ void BiDirCPURenderThread::RenderFunc() {
 		const bool validLightPath = TraceLightPath(time, sampler, lensPoint, lightPathVertices, sampleResults);
 		assert (SampleResult::IsAllValid(sampleResults));
 
-		if (validLightPath) {
+		if (validLightPath) 
+		{
 			//------------------------------------------------------------------
 			// Trace eye path
 			//------------------------------------------------------------------
@@ -961,7 +1066,12 @@ void BiDirCPURenderThread::RenderFunc() {
 #endif
 			}
 		}
-		
+
+		/// <summary>
+		/// ============
+		/// </summary>
+		//guiding_push_sample_data_to_global_storage(&kg, &state);
+
 		assert (SampleResult::IsAllValid(sampleResults));
 
 		// Variance clamping
@@ -987,7 +1097,90 @@ void BiDirCPURenderThread::RenderFunc() {
 				break;
 			}
 		}
+
+	/*	if (steps==60000)
+			break;*/
 	}
+	//// ===================================
+
+	//// update guiding_field
+
+	//const size_t num_valid_samples = guiding_sample_data_storage->GetSizeSurface() +
+	//	guiding_sample_data_storage->GetSizeVolume();
+	//if (num_valid_samples >= 1024) 
+	//{
+	//	guiding_field->Update(*guiding_sample_data_storage);
+	//	guiding_sample_data_storage->Clear();
+	//}
+
+	//// ===================================
+
+	//float srand = 0;
+	//float3 rand_bsdf(0, 0);
+	//engine->film->channel_IRRADIANCE->Clear();
+	//for (int x = 0; x < engine->film->GetWidth(); x++)
+	//{
+	//	for (int y = 0; y < engine->film->GetHeight(); y++)
+	//	{
+	//		float val[] = { 0,1,0,1 };
+
+	//		RayHit rayHit;
+	//		Ray ray;
+
+	//		camera->GenerateRay(0,
+	//			x,y, &ray,
+	//			new PathVolumeInfo(), 0,0);
+
+	//		bool hit = device->TraceRay(&ray, &rayHit);
+	//		if (hit)
+	//		{
+	//			Point p;
+	//			Normal n;
+
+	//			// Check if it a triangle with bevel edges
+	//			bool bevelContinueToTrace;
+	//			const ExtMesh* mesh = scene->objDefs.GetSceneObject(rayHit.meshIndex)->GetExtMesh();
+
+	//			Transform local2world;
+	//			mesh->GetLocal2World(ray.time, local2world);
+	//			n=mesh->GetGeometryNormal(local2world, rayHit.triangleIndex);
+
+	//		
+	//			float3 P = ray.o + ray.d * rayHit.t;
+	//			float3 N = float3(n.x, n.y, n.z);
+	//			float3 d = float3(ray.d.x, ray.d.y, ray.d.z);
+
+	//			float rand_bsdf_guiding = sampler->GetSample(12);//TIODO
+
+	//			if (guiding_bsdf_init(&kg, &state, P, N, srand))
+	//			{
+
+	//				float3 dirOut;
+	//				float pdf = guiding_bsdf_sample(&kg, &state, rand_bsdf, &dirOut);
+
+	//				// 
+	////				float val[] = { 1,0,0,1 };
+	//				float val[] = { N.x,N.y,N.z,1 };
+	//				engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+	//			}
+	//			else
+	//			{
+	//				float val[] = { 1,0,0,1 };
+	//				engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+	//			}
+	//		}
+	//	/*	else
+	//		{
+	//			float val[] = { 0,0,0,0 };
+	//			engine->film->channel_IRRADIANCE->SetPixel(x, y, val);
+	//		}*/
+	//		//bool hit = device ? device->TraceRay(ray, rayHit) : dataSet->GetAccelerator(ACCEL_EMBREE)->Intersect(ray, rayHit);
+
+	//		//guiding_bsdf_init(&kd,&state, );
+
+	//		
+	//	}
+	//}
 
 	delete sampler;
 	delete rndGen;

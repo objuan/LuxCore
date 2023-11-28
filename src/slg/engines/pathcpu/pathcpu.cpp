@@ -22,6 +22,8 @@
 #include "slg/samplers/sobol.h"
 #include "slg/samplers/metropolis.h"
 
+#include "slg/engines/bidircpubgl/guiding.h"
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
@@ -33,12 +35,25 @@ using namespace slg;
 PathCPURenderEngine::PathCPURenderEngine(const RenderConfig *rcfg) :
 		CPUNoTileRenderEngine(rcfg), photonGICache(nullptr),
 		lightSampleSplatter(nullptr), lightSamplerSharedData(nullptr) {
+
 }
 
 PathCPURenderEngine::~PathCPURenderEngine() {
 	delete photonGICache;
 	delete lightSampleSplatter;
 	delete lightSamplerSharedData;
+}
+
+void PathCPURenderEngine::UpdateProperties(const luxrays::Properties& cfg) {
+
+	
+	float guiding_blend_factor = cfg.Get("path.guiding.blend_factor").Get<float>();
+	if (guiding_blend_factor != pathGuiding->kg->data.surface_guiding_probability)
+	{
+		pathGuiding->kg->data.surface_guiding_probability = guiding_blend_factor;
+		pathGuiding->state->surface_guiding_sampling_prob = guiding_blend_factor;
+		renderConfig->scene->editActions.AddAction(slg::CAMERA_EDIT);
+	}
 }
 
 void PathCPURenderEngine::InitFilm() {
@@ -49,6 +64,8 @@ void PathCPURenderEngine::InitFilm() {
 			Get("path.hybridbackforward.enable")).Get<bool>();
 	if (hybridBackForwardEnable)
 		film->AddChannel(Film::RADIANCE_PER_SCREEN_NORMALIZED);
+
+	film->AddChannel(Film::IRRADIANCE);
 
 	film->SetRadianceGroupCount(renderConfig->scene->lightDefs.GetLightGroupCount());
 	film->SetThreadCount(renderThreads.size());

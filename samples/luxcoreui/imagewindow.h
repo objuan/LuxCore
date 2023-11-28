@@ -37,7 +37,7 @@ public:
 	virtual void Open();
 	virtual void Draw();
 
-protected:
+public:
 	virtual void RefreshTexture() = 0;
 
 	void Copy1(const float *filmPixels, float *pixels,

@@ -30,9 +30,9 @@
 //#include <openpgl/cpp/Device.h>
 #include <openpgl/cpp/OpenPGL.h>
 
-#define PATH_GUIDING_LEVEL 4
-
-#include "slg/engines/bidircpubgl/guiding.h"
+//#define PATH_GUIDING_LEVEL 4
+//
+//#include "slg/engines/bidircpubgl/guiding.h"
 
 
 
@@ -40,12 +40,12 @@ using namespace std;
 using namespace luxrays;
 using namespace slg;
 
-KernelGlobals kg;
-IntegratorState state;
-
-bool kernel_data::use_guiding_direct_light = true;
-bool kernel_data::use_guiding_mis_weights = true;
-float kernel_data::surface_guiding_probability = 1;
+//KernelGlobals kg;
+//IntegratorState state;
+//
+//bool kernel_data::use_guiding_direct_light = true;
+//bool kernel_data::use_guiding_mis_weights = true;
+//float kernel_data::surface_guiding_probability = 1;
 
 //float kernel_data::pass_stride = 0;
 
@@ -646,6 +646,11 @@ bool BiDirCPUBGLRenderThread::TraceLightPath(const float time,
 				if (!lightVertex.bsdf.IsDelta()) {
 					lightPathVertices.push_back(lightVertex);
 
+					// add to MAP
+					
+			/*		guiding_record_surface_segment(&kg, &state, lightVertex.bsdf.hitPoint.p,
+						lightVertex.bsdf.hitPoint.fixedDir);*/
+					// 
 					//----------------------------------------------------------
 					// Try to connect the light path vertex with the eye
 					//----------------------------------------------------------
@@ -672,6 +677,8 @@ bool BiDirCPUBGLRenderThread::TraceLightPath(const float time,
 				*/
 				if (!Bounce(time, sampler, sampleOffset + 2, &lightVertex, &lightRay))
 					break;
+
+
 			} else {
 				// Ray lost in space...
 				break;
@@ -747,6 +754,12 @@ bool BiDirCPUBGLRenderThread::Bounce(const float time, Sampler *sampler,
 
 	++pathVertex->depth;
 
+
+	//Normal N = pathVertex->bsdf.hitPoint.geometryN;
+	//float3 d = float3(nextEventRay->d.x, nextEventRay->d.y, nextEventRay->d.z);
+	//guiding_record_surface_bounce(&kg, &state, bsdfSample, bsdfPdfW,
+	//	float3(N.x, N.y, N.z), d, float2(0,0), 0 );
+
 	return true;
 }
 
@@ -793,6 +806,14 @@ void BiDirCPUBGLRenderThread::RenderFunc() {
 //
 //	kg.opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
 //	kg.opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
+//
+//	int transparent_max_bounce = 128;
+//	int max_bounce = 256;
+//	bool train = true;
+//	if (train) {
+//		kg.opgl_path_segment_storage->Reserve(transparent_max_bounce +max_bounce + 3);
+//		kg.opgl_path_segment_storage->Clear();
+//	}
 
 	//--------------------------------------------------------------------------
 	// Initialization
@@ -871,7 +892,7 @@ void BiDirCPUBGLRenderThread::RenderFunc() {
 		const bool validLightPath = TraceLightPath(time, sampler, lensPoint, lightPathVertices, sampleResults);
 		assert (SampleResult::IsAllValid(sampleResults));
 
-		if (validLightPath) 
+		if (false)//validLightPath) 
 		{
 			//------------------------------------------------------------------
 			// Trace eye path
@@ -1043,13 +1064,17 @@ void BiDirCPUBGLRenderThread::RenderFunc() {
 				
 				isTransmittedEyePath = isTransmittedEyePath && (eyeVertex.bsdfEvent & TRANSMIT);
 
+
+			
 #ifdef WIN32
 				// Work around Windows bad scheduling
 				renderThread->yield();
 #endif
 			}
+			
 		}
-		
+	//	guiding_push_sample_data_to_global_storage(&kg, &state);
+
 		assert (SampleResult::IsAllValid(sampleResults));
 
 		// Variance clamping

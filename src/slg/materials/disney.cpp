@@ -109,11 +109,13 @@ Spectrum DisneyMaterial::Evaluate(
 	const float localFilmThickness = filmThickness ? filmThickness->GetFloatValue(hitPoint) : 0.f;
 	const float localFilmIor = (localFilmThickness > 0.f && filmIor) ? filmIor->GetFloatValue(hitPoint) : 1.f;
 
+	float cos = fabsf(CosTheta(localLightDir));
+
 	return DisneyEvaluate(hitPoint.fromLight, color, subsurface, roughness, metallic, specular, specularTint,
 			clearcoat, clearcoatGloss, anisotropicGloss, sheen, sheenTint, localFilmAmount, localFilmThickness, 
 			localFilmIor, localLightDir, localEyeDir, event, directPdfW, reversePdfW)
 			// Evaluate() follows LuxRender habit to return the result multiplied by cosThetaToLight
-			* fabsf(CosTheta(localLightDir));
+			* cos;
 }
 
 Spectrum DisneyMaterial::DisneyEvaluate(
@@ -177,7 +179,7 @@ Spectrum DisneyMaterial::DisneyEvaluate(
 
 	const Spectrum f = (Lerp(subsurface, diffuseEval, subsurfaceEval) + sheenEval) * (1.0f - metallic) + glossyEval;
 
-	return f * fabsf(NdotL);
+	return f;// *fabsf(NdotL);
 }
 
 Spectrum DisneyMaterial::DisneyDiffuse(const Spectrum &color, const float roughness,
@@ -310,10 +312,12 @@ Spectrum DisneyMaterial::Sample(
 	const float localFilmThickness = filmThickness ? filmThickness->GetFloatValue(hitPoint) : 0.f;
 	const float localFilmIor = (localFilmThickness > 0.f && filmIor) ? filmIor->GetFloatValue(hitPoint) : 1.f;
 
-	const Spectrum f = DisneyEvaluate(hitPoint.fromLight, color, subsurface, roughness,
+	Spectrum f = DisneyEvaluate(hitPoint.fromLight, color, subsurface, roughness,
 			metallic, specular, specularTint, clearcoat, clearcoatGloss,
 			anisotropicGloss, sheen, sheenTint, localFilmAmount, localFilmThickness, localFilmIor,
 			localLightDir, localEyeDir, event, nullptr, nullptr);
+
+	f = f * NdotL;
 
 	return f / *pdfW;
 }

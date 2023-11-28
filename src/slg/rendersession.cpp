@@ -250,6 +250,9 @@ void RenderSession::Parse(const luxrays::Properties &props) {
 
 		// Update render config properties
 		renderConfig->UpdateFilmProperties(props);
+
+		renderEngine->UpdateProperties(props);
+
 	}
 }
 
