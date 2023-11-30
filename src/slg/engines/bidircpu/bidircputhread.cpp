@@ -26,21 +26,11 @@
 
 #include "slg/engines/bidircpu/bidircpu.h"
 
+#include "slg/engines/bidircpubgl/guiding.h"
 
 using namespace std;
 using namespace luxrays;
 using namespace slg;
-
-//#define PATH_GUIDING_LEVEL 4
-//#include "slg/engines/bidircpubgl/guiding.h"
-//
-//
-//KernelGlobals kg;
-//IntegratorState state;
-//
-//bool kernel_data::use_guiding_direct_light = true;
-//bool kernel_data::use_guiding_mis_weights = true;
-//float kernel_data::surface_guiding_probability = 1;
 
 //------------------------------------------------------------------------------
 // BiDirCPU RenderThread
@@ -517,7 +507,10 @@ void BiDirCPURenderThread::DirectHitLight(
 	const float misWeight = 1.f / (weightCamera + 1.f);
 
 	*radiance += misWeight * eyeVertex.throughput * lightRadiance;
-	
+
+	if (pathGuiding->enabled)
+		pathGuiding->guiding_record_surface_emission(eyeVertex.throughput, weightCamera, misWeight);
+
 	assert (radiance->IsValid());
 }
 
@@ -737,84 +730,11 @@ bool BiDirCPURenderThread::Bounce(const float time, Sampler *sampler,
 	return true;
 }
 
-//void guiding_prepare_structures(openpgl::cpp::Field* guiding_field)
-//{
-//
-//	int training_samples = 0;
-//	const bool train = (training_samples == 0) ||
-//		(guiding_field->GetIteration() < training_samples);
-//
-//	for (auto&& path_trace_work : path_trace_works_) {
-//		path_trace_work->guiding_init_kernel_globals(
-//			guiding_field.get(), guiding_sample_data_storage, train);
-//	}
-//	if (train) {
-//		/* For training the guiding distribution we need to force the number of samples
-//		 * per update to be limited, for reproducible results and reasonable training size.
-//		 *
-//		 * Idea: we could stochastically discard samples with a probability of 1/num_samples_per_update
-//		 * we can then update only after the num_samples_per_update iterations are rendered. */
-//		render_scheduler_.set_limit_samples_per_update(4);
-//	}
-//	else {
-//		render_scheduler_.set_limit_samples_per_update(0);
-//	}
-//}
 
 void BiDirCPURenderThread::RenderFunc() {
 	//SLG_LOG("[BiDirCPURenderThread::" << threadIndex << "] Rendering thread started");
 
-	//openpgl::cpp::Device odevice(PGL_DEVICE_TYPE_CPU_4);
-
-	///* The storage container which holds the training data/samples generated during the last rendering iteration. */
-	//openpgl::cpp::SampleStorage* guiding_sample_data_storage = new openpgl::cpp::SampleStorage();
-	////guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
-
-	//PGLFieldArguments fieldArgs;
-
-	//pglFieldArgumentsSetDefaults(fieldArgs, PGL_SPATIAL_STRUCTURE_KDTREE, PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM);
-
-	////	openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(odevice, field_args);
-
-	//	 /* The guiding field which holds the representation of the incident radiance field for the
-	//   * complete scene. */
-
-	//openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(&odevice, fieldArgs);
-
-	//
-
-	///* The number of already performed training iterations for the guiding field. */
-	//int guiding_update_count = 0;
-
-	//std::cout << "Field created successfully... exiting\n";
-
-	////	openpgl::cpp::SurfaceSamplingDistribution *opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
-	//	//openpgl::cpp::SurfaceSamplingDistribution * opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
-
-	//	//FIELD
-	//	// This information can be the incidence radiance field learned from several training iterations across the whole scene
-	//	// The Field holds separate approximations for surfaceand volumetric radiance distributions,
-	//	// which can be accessed separately.The representation of a scene’s radiance distribution is usually separated into a positionaland directional representation
-	//	// using a spatial subdivision structure.
-	//	// Each spatial leaf node(a.k.a.Region) contains a directional representation for the local incident radiance distribution.
-
-	//// condivise
-	//kg.opgl_sample_data_storage = guiding_sample_data_storage;
-	//kg.opgl_guiding_field = guiding_field; // conserva le info della radiance
-
-
-	//kg.opgl_path_segment_storage = new openpgl::cpp::PathSegmentStorage();
-	//kg.opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
-	//kg.opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
-
-	//int transparent_max_bounce = 128;
-	//int max_bounce = 256;
-	//bool train = true;
-	//if (train) {
-	//	kg.opgl_path_segment_storage->Reserve(transparent_max_bounce + max_bounce + 3);
-	//	kg.opgl_path_segment_storage->Clear();
-	//}
-
+	BiDirCPURenderEngine* engine = (BiDirCPURenderEngine*)renderEngine;
 
 	//--------------------------------------------------------------------------
 	// Initialization
@@ -823,7 +743,7 @@ void BiDirCPURenderThread::RenderFunc() {
 	// This is really used only by Windows for 64+ threads support
 	SetThreadGroupAffinity(threadIndex);
 
-	BiDirCPURenderEngine *engine = (BiDirCPURenderEngine *)renderEngine;
+	
 	// (engine->seedBase + 1) seed is used for sharedRndGen
 
 	RandomGenerator *rndGen = new RandomGenerator(engine->seedBase + 1 + threadIndex);
@@ -842,9 +762,29 @@ void BiDirCPURenderThread::RenderFunc() {
 		sampleBootSize + // To generate the initial light vertex and trace eye ray
 		engine->maxLightPathDepth * sampleLightStepSize + // For each light vertex
 		engine->maxEyePathDepth * sampleEyeStepSize; // For each eye vertex
+		
 	sampler->SetThreadIndex(threadIndex);
-	sampler->RequestSamples(PIXEL_NORMALIZED_AND_SCREEN_NORMALIZED, sampleSize);
+	sampler->RequestSamples(PIXEL_NORMALIZED_AND_SCREEN_NORMALIZED, sampleSize + PathGuiding::SampleSize);
 
+	// ==============
+
+//log_file = new std::ofstream("C:\\Lavoro\\luxcorerender\\WindowsCompile\\Build_CMake\\LuxCore\\bin\\Debug\\guide_log.txt", std::ios_base::out );
+
+//	if (pathGuiding==NULL)
+	float guiding_blend_factor = 0.0f;
+	if (engine->renderConfig->cfg.HaveNames("path.guiding.blend_factor"))
+		guiding_blend_factor = engine->renderConfig->cfg.Get("path.guiding.blend_factor").Get<float>();
+	if (pathGuiding != NULL)
+	{
+		guiding_blend_factor = pathGuiding->kg->data.surface_guiding_probability;
+		delete pathGuiding;
+	}
+
+	pathGuiding = new PathGuiding(engine->pathGuidingGlobalData, threadIndex, sampler, sampleSize);
+	pathGuiding->kg->data.surface_guiding_probability = guiding_blend_factor;
+	pathGuiding->enabled = guiding_blend_factor > 0.1f;
+
+	// ==============
 	VarianceClamping varianceClamping(engine->sqrtVarianceClampMaxValue);
 
 	// Disable vertex merging

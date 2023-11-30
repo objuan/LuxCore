@@ -24,6 +24,8 @@
 
 #include "slg/engines/bidircpubgl/guiding.h"
 
+//KernelGlobalsCPU* PathGuiding::kg=NULL;
+
 using namespace std;
 using namespace luxrays;
 using namespace slg;
@@ -36,22 +38,24 @@ PathCPURenderEngine::PathCPURenderEngine(const RenderConfig *rcfg) :
 		CPUNoTileRenderEngine(rcfg), photonGICache(nullptr),
 		lightSampleSplatter(nullptr), lightSamplerSharedData(nullptr) {
 
+	pathGuidingGlobalData = new PathGuidingGlobalData();
 }
 
 PathCPURenderEngine::~PathCPURenderEngine() {
 	delete photonGICache;
 	delete lightSampleSplatter;
 	delete lightSamplerSharedData;
+	delete pathGuidingGlobalData;
 }
 
 void PathCPURenderEngine::UpdateProperties(const luxrays::Properties& cfg) {
 
 	
 	float guiding_blend_factor = cfg.Get("path.guiding.blend_factor").Get<float>();
-	if (guiding_blend_factor != pathGuiding->kg->data.surface_guiding_probability)
+	if (guiding_blend_factor != pathGuidingGlobalData->surface_guiding_probability)
 	{
-		pathGuiding->kg->data.surface_guiding_probability = guiding_blend_factor;
-		pathGuiding->state->surface_guiding_sampling_prob = guiding_blend_factor;
+		pathGuidingGlobalData->surface_guiding_probability = guiding_blend_factor;
+	//	pathGuiding->state->surface_guiding_sampling_prob = guiding_blend_factor;
 		renderConfig->scene->editActions.AddAction(slg::CAMERA_EDIT);
 	}
 }
@@ -148,6 +152,7 @@ void PathCPURenderEngine::StartLockLess() {
 	// Initialize the PathTracer class with rendering parameters
 	//--------------------------------------------------------------------------
 
+	
 	pathTracer.ParseOptions(cfg, GetDefaultProps());
 
 	if (pathTracer.hybridBackForwardEnable)

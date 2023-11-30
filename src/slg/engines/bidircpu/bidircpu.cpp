@@ -20,6 +20,8 @@
 #include "slg/engines/bidircpu/bidircpurenderstate.h"
 #include "slg/samplers/sobol.h"
 
+#include "slg/engines/bidircpubgl/guiding.h"
+
 using namespace luxrays;
 using namespace slg;
 using namespace std;
@@ -39,11 +41,14 @@ BiDirCPURenderEngine::BiDirCPURenderEngine(const RenderConfig *rcfg) :
 	radiusAlpha = 0.f;
 
 	aovWarmupSamplerSharedData = nullptr;
+
+	pathGuidingGlobalData = new PathGuidingGlobalData();
 }
 
 BiDirCPURenderEngine::~BiDirCPURenderEngine() {
 	delete photonGICache;
 	delete aovWarmupSamplerSharedData;
+	delete pathGuidingGlobalData;
 }
 
 RenderState *BiDirCPURenderEngine::GetRenderState() {

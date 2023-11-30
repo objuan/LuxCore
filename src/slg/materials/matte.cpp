@@ -42,6 +42,7 @@ Spectrum MatteMaterial::EvaluateTotal(const HitPoint &hitPoint) const {
 Spectrum MatteMaterial::Evaluate(const HitPoint &hitPoint,
 	const Vector &localLightDir, const Vector &localEyeDir, BSDFEvent *event,
 	float *directPdfW, float *reversePdfW) const {
+
 	if (directPdfW)
 		*directPdfW = fabsf((hitPoint.fromLight ? localEyeDir.z : localLightDir.z) * INV_PI);
 
@@ -49,6 +50,10 @@ Spectrum MatteMaterial::Evaluate(const HitPoint &hitPoint,
 		*reversePdfW = fabsf((hitPoint.fromLight ? localLightDir.z : localEyeDir.z) * INV_PI);
 
 	*event = DIFFUSE | REFLECT;
+	//if (hitPoint.fromLight)
+	//	return Kd->GetSpectrumValue(hitPoint).Clamp(0.f, 1.f) * fabsf(localEyeDir.z / localLightDir.z);
+	//else
+	//	return Kd->GetSpectrumValue(hitPoint).Clamp(0.f, 1.f);
 	return Kd->GetSpectrumValue(hitPoint).Clamp(0.f, 1.f) * (INV_PI * fabsf(localLightDir.z));
 	//return Kd->GetSpectrumValue(hitPoint).Clamp01() * (INV_PI * fabsf(localLightDir.z));
 }

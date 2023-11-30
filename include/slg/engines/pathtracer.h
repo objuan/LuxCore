@@ -30,6 +30,8 @@
 #include "slg/engines/caches/photongi/photongicache.h"
 #include "slg/utils/pathinfo.h"
 
+class PathGuiding;
+
 namespace slg {
 
 // OpenCL data types
@@ -67,6 +69,9 @@ public:
 	
 	// Used for hybrid rendering
 	double eyeSampleCount, lightSampleCount;
+
+	// guiding
+	PathGuiding* pathGuiding;
 };
 
 class PhotonGICache;
@@ -99,15 +104,15 @@ public:
 		const float u3, const float u4,
 		const EyePathInfo &pathInfo, const luxrays::Spectrum &pathThrouput,
 		const BSDF &bsdf, SampleResult *sampleResult,
-		const bool useBSDFEVal = true) const;
+		const bool useBSDFEVal = true, PathGuiding* pathGuiding = NULL) const;
 
 	void RenderEyePath(luxrays::IntersectionDevice *device,
 			const Scene *scene, Sampler *sampler, EyePathInfo &pathInfo,
 			luxrays::Ray &eyeRay, const luxrays::Spectrum &eyeTroughput,
-			std::vector<SampleResult> &sampleResults) const;
+			std::vector<SampleResult> &sampleResults,PathGuiding* pathGuiding = NULL) const;
 	void RenderEyeSample(luxrays::IntersectionDevice *device,
 			const Scene *scene, const Film *film, Sampler *sampler,
-			std::vector<SampleResult> &sampleResults) const;
+			std::vector<SampleResult> &sampleResults, PathGuiding* pathGuiding=NULL) const;
 
 	void RenderLightSample(luxrays::IntersectionDevice *device,
 			const Scene *scene, const Film *film, Sampler *sampler,
@@ -165,7 +170,7 @@ private:
 	bool SampleBSDF(BSDF* bsdf, luxrays::Vector* sampledDir,
 		const float u0, const float u1, luxrays::Spectrum* result,
 		float* pdfW, float* absCosSampledDir,
-		BSDFEvent* event) const;
+		BSDFEvent* event, PathGuiding* pathGuiding) const;
 
 	luxrays::Spectrum ShadowCatcherSample(BSDF* bsdf, luxrays::Vector* sampledDir,
 		float* pdfW, float* absCosSampledDir, BSDFEvent* event) const;
@@ -175,10 +180,10 @@ private:
 	void DirectHitFiniteLight(const Scene *scene, const EyePathInfo &pathInfo,
 			const luxrays::Spectrum &pathThrouput, const luxrays::Ray &ray,
 			const float distance, const BSDF &bsdf,
-			SampleResult *sampleResult) const;
+			SampleResult *sampleResult, PathGuiding* pathGuiding = NULL) const;
 	void DirectHitInfiniteLight(const Scene *scene, const EyePathInfo &pathInfo,
 			const luxrays::Spectrum &pathThrouput, const luxrays::Ray &ray,
-			const BSDF *bsdf, SampleResult *sampleResult) const;
+			const BSDF *bsdf, SampleResult *sampleResult, PathGuiding* pathGuiding = NULL) const;
 	bool CheckDirectHitVisibilityFlags(const LightSource *lightSource,
 			const PathDepthInfo &depthInfo,	const BSDFEvent lastBSDFEvent) const;
 

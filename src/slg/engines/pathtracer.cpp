@@ -25,7 +25,7 @@
 
 #include "slg/engines/bidircpubgl/guiding.h"
 
-extern PathGuiding* pathGuiding;
+//extern PathGuiding* pathGuiding;
 
 using namespace std;
 using namespace luxrays;
@@ -141,7 +141,7 @@ PathTracer::DirectLightResult PathTracer::DirectLightSampling(
 		const float u3, const float u4,
 		const EyePathInfo &pathInfo, const Spectrum &pathThroughput,
 		const BSDF &bsdf, SampleResult *sampleResult,
-		const bool useBSDFEVal) const {
+		const bool useBSDFEVal, PathGuiding* pathGuiding) const {
 	if (!bsdf.IsDelta()) {
 		// Select the light strategy to use
 		const LightStrategy *lightStrategy;
@@ -276,7 +276,7 @@ void PathTracer::DirectHitFiniteLight(const Scene *scene,
 		const EyePathInfo &pathInfo,
 		const Spectrum &pathThroughput, const Ray &ray,
 		const float distance, const BSDF &bsdf,
-		SampleResult *sampleResult) const {
+		SampleResult *sampleResult, PathGuiding* pathGuiding) const {
 	const LightSource *lightSource = bsdf.GetLightSource();
 
 	// Check if the light source is visible according the settings
@@ -318,7 +318,7 @@ void PathTracer::DirectHitFiniteLight(const Scene *scene,
 
 void PathTracer::DirectHitInfiniteLight(const Scene *scene,
 		const EyePathInfo &pathInfo, const Spectrum &pathThroughput,
-		const Ray &ray, const BSDF *bsdf, SampleResult *sampleResult) const {
+		const Ray &ray, const BSDF *bsdf, SampleResult *sampleResult, PathGuiding* pathGuiding ) const {
 	// If the material is shadow transparent, Direct Light sampling
 	// will take care of transporting all emitted light
 	if (bsdf && bsdf->hitPoint.throughShadowTransparency)
@@ -389,7 +389,7 @@ void PathTracer::GenerateEyeRay(const Camera *camera, const Film *film, Ray &eye
 void PathTracer::RenderEyePath(IntersectionDevice *device,
 		const Scene *scene, Sampler *sampler, EyePathInfo &pathInfo,
 		Ray &eyeRay,  const luxrays::Spectrum &eyeTroughput,
-		vector<SampleResult> &sampleResults) const {
+		vector<SampleResult> &sampleResults, PathGuiding* pathGuiding) const {
 	// To keep track of the number of rays traced
 	const double deviceRayCount = device->GetTotalRaysCount();
 
@@ -443,7 +443,7 @@ void PathTracer::RenderEyePath(IntersectionDevice *device,
 					checkDirectLightHit) {
 				DirectHitInfiniteLight(scene, pathInfo, pathThroughput,
 						eyeRay, sampleResult.firstPathVertex ? nullptr : &bsdf,
-						&sampleResult);
+						&sampleResult, pathGuiding);
 
 				// sampleResult->AddEmission
 			}
@@ -523,7 +523,7 @@ void PathTracer::RenderEyePath(IntersectionDevice *device,
 
 		if (bsdf.IsLightSource() && checkDirectLightHit) {
 			DirectHitFiniteLight(scene, pathInfo, pathThroughput,
-					eyeRay, eyeRayHit.t, bsdf, &sampleResult);
+					eyeRay, eyeRayHit.t, bsdf, &sampleResult, pathGuiding);
 			// sampleResult->AddEmission
 		
 		}
@@ -615,7 +615,7 @@ void PathTracer::RenderEyePath(IntersectionDevice *device,
 				sampler->GetSample(sampleOffset + 4),
 				sampler->GetSample(sampleOffset + 5),
 				pathInfo, 
-				pathThroughput, bsdf, &sampleResult);
+				pathThroughput, bsdf, &sampleResult,true,pathGuiding);
 
 				// sampleResult->AddDirectLight
 				// sampleResult->irradiance
@@ -657,7 +657,7 @@ void PathTracer::RenderEyePath(IntersectionDevice *device,
 					sampler->GetSample(sampleOffset + 6),
 					sampler->GetSample(sampleOffset + 7),
 					&bsdfSample,
-					&bsdfPdfW, &cosSampledDir, &bsdfEvent);
+					&bsdfPdfW, &cosSampledDir, &bsdfEvent, pathGuiding);
 
 				/*bsdfSample = bsdf.Sample(&sampledDir,
 						sampler->GetSample(sampleOffset + 6),
@@ -748,14 +748,14 @@ void PathTracer::RenderEyePath(IntersectionDevice *device,
 
 void PathTracer::RenderEyeSample(IntersectionDevice *device,
 		const Scene *scene, const Film *film,
-		Sampler *sampler, vector<SampleResult> &sampleResults) const {
+		Sampler *sampler, vector<SampleResult> &sampleResults, PathGuiding* pathGuiding) const {
 	ResetEyeSampleResults(sampleResults);
 
 	EyePathInfo pathInfo;
 	Ray eyeRay;
 	GenerateEyeRay(scene->camera, film, eyeRay, pathInfo.volume, sampler, sampleResults[0]);
 
-	RenderEyePath(device, scene, sampler, pathInfo, eyeRay, Spectrum(1.f), sampleResults);
+	RenderEyePath(device, scene, sampler, pathInfo, eyeRay, Spectrum(1.f), sampleResults, pathGuiding);
 }
 
 //------------------------------------------------------------------------------
@@ -1028,7 +1028,7 @@ void PathTracer::RenderSample(PathTracerThreadState &state) const {
 	}
 
 	if (sampler == state.eyeSampler)
-		RenderEyeSample(state.device, state.scene, state.film, state.eyeSampler, state.eyeSampleResults);
+		RenderEyeSample(state.device, state.scene, state.film, state.eyeSampler, state.eyeSampleResults, state.pathGuiding);
 	else
 		RenderLightSample(state.device, state.scene, state.film, state.lightSampler, state.lightSampleResults);
 

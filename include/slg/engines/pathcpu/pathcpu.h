@@ -29,7 +29,7 @@
 #include "slg/bsdf/bsdf.h"
 #include "slg/utils/pathdepthinfo.h"
 
-class PathGuiding;
+class PathGuidingGlobalData;
 
 namespace slg {
 
@@ -45,6 +45,8 @@ public:
 			luxrays::IntersectionDevice *device);
 
 	friend class PathCPURenderEngine;
+
+	PathGuiding* pathGuiding;
 
 protected:
 	void RenderFunc();
@@ -74,7 +76,9 @@ public:
 
 	virtual void UpdateProperties(const luxrays::Properties& cfg);
 
-	PathGuiding* pathGuiding;
+	PathGuidingGlobalData *pathGuidingGlobalData;
+	std::mutex g_mutex;
+	//PathGuiding* pathGuiding;
 
 protected:
 	static const luxrays::Properties &GetDefaultProps();

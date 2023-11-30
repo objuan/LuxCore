@@ -25,7 +25,7 @@
 
 #include "slg/engines/bidircpubgl/guiding.h"
 
-extern PathGuiding* pathGuiding;
+//extern PathGuiding* pathGuiding;
 
 using namespace std;
 using namespace luxrays;
@@ -96,7 +96,7 @@ typedef struct
 
 typedef struct ShaderData
 {
-	Vector wo;
+	Vector wi;
 	int num_closure;
 	ShaderClosure closure[10];
 }ShaderData;
@@ -209,10 +209,11 @@ inline void bsdf_eval_accum(BsdfEval* eval,
 
 
 // =====
+// non / pdf
 Spectrum bsdf_eval(KernelGlobals kg,
 	ShaderData* sd,
 	const ShaderClosure* sc,
-	const float3 _wo,
+	const float3 wo, // world coordinate
 	float* pdf)
 {
 	Spectrum eval = zero_spectrum();
@@ -220,13 +221,19 @@ Spectrum bsdf_eval(KernelGlobals kg,
 
 	float directPDF;
 	float reversePDF;
-	Vector wo = Vector(_wo.x, _wo.x, _wo.x);
-	eval = sc->bsdf->GetMaterial()->Evaluate(sc->bsdf->hitPoint, wo,
-		sc->bsdf->hitPoint.fixedDir , sc->event, &directPDF,&reversePDF);
-	*pdf = directPDF;
-	return eval / directPDF;
-}
+	//Vector wo = Vector(_wo.x, _wo.x, _wo.x);
 
+	/*Vector localEyeDir = sc->bsdf->GetFrame().ToLocal(Vector(sc->bsdf->hitPoint.fixedDir.x,
+		sc->bsdf->hitPoint.fixedDir.y,
+		sc->bsdf->hitPoint.fixedDir.z));*/
+	Vector localEyeDir = sc->bsdf->GetFrame().ToLocal(sd->wi);
+	Vector localLightDir = sc->bsdf->GetFrame().ToLocal(Vector(wo.x, wo.y, wo.z));
+
+	eval = sc->bsdf->GetMaterial()->Evaluate(sc->bsdf->hitPoint, localLightDir,
+		localEyeDir , sc->event, &directPDF,&reversePDF);
+	*pdf = directPDF;
+	return eval;// / directPDF;
+}
 
 inline float surface_shader_bsdf_eval_pdfs(const KernelGlobals kg,
 	ShaderData* sd,
@@ -312,15 +319,16 @@ inline bool calculate_ris_target(GuidingRISSample* ris_sample,
 
 
 
-bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
+bool SampleBSDF_guiding(PathGuiding *pathGuiding,
+	BSDF* bsdf, //Vector* sampledDir,
 	const float u0, const float u1,
 //	Spectrum* out_result,
 	//float* pdfW, 
-	float* absCosSampledDir,
+	//float* absCosSampledDir,
 	BSDFEvent* event,
 	// --
-	BsdfEval* bsdf_eval,
-	float3* wo,
+	BsdfEval* bsdf_eval, // non diviso per pdf
+	float3* wo, // world coordinate
 	float* bsdf_pdf,
 	float* mis_pdf,
 	float* unguided_bsdf_pdf,
@@ -330,10 +338,9 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	ShaderData sd;
 	sd.num_closure = 1;
 	sd.closure[0].init(bsdf,event);
+	sd.wi = bsdf->hitPoint.fixedDir;
 	ShaderClosure* sc = &sd.closure[0];
 	
-	//BsdfEval _bsdf_eval;
-	//BsdfEval* bsdf_eval = &_bsdf_eval;
 
 	// =====================
 	// 
@@ -367,6 +374,7 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 
 	// bsdf_sample
 	float pdfW0;
+	// result0 è diviso per /pdf
 	Spectrum result0 = bsdf->GetMaterial()->Sample(hitPoint,
 		localFixedDir, &localSampledDir, u0, u1, hitPoint.passThroughEvent,
 		&pdfW0, event);
@@ -374,8 +382,10 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	/*const Vector& localLightDir = hitPoint.fromLight ? localFixedDir : localSampledDir;
 	const Vector& localEyeDir = hitPoint.fromLight ? localSampledDir : localFixedDir;*/
 
-	ris_samples[0].eval = result0;
-	ris_samples[0].wo = float3(localSampledDir.x, localSampledDir.y, localSampledDir.z);
+	ris_samples[0].eval = result0 * pdfW0; // lo riporto senza pdf
+	// in world coordinate
+	Vector wSampledDir = bsdf->GetFrame().ToWorld(localSampledDir);
+	ris_samples[0].wo = float3(wSampledDir.x, wSampledDir.y, wSampledDir.z);
 	ris_samples[0].bsdf_pdf = pdfW0;
 	ris_samples[0].sampled_roughness = float2(1, 1);
 	ris_samples[0].eta = 1;
@@ -408,10 +418,10 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	}
 
 	///
-	//*bsdf_eval = ris_samples[0].eval;
-	//*pdfW = ris_samples[0].bsdf_pdf;
-	//*absCosSampledDir = fabsf(CosTheta(localSampledDir));
-	//*sampledDir = bsdf->GetFrame().ToWorld(localSampledDir);
+	//bsdf_eval_init(bsdf_eval, ris_samples[0].eval);
+	//*bsdf_pdf = ris_samples[0].bsdf_pdf;
+	////*absCosSampledDir = fabsf(CosTheta(localSampledDir));
+	//*wo = ris_samples[0].wo;
 	////*event = event
 
 	//return true;
@@ -424,9 +434,10 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	bsdf_eval_init(&ris_samples[1].bsdf_eval, eval);
 	ris_samples[1].guide_pdf = pathGuiding->guiding_bsdf_sample(
 		 float3_to_float2(ris_samples[1].rand), &ris_samples[1].wo);
+
 	// to local
-	auto v =  bsdf->GetFrame().ToLocal(Vector(ris_samples[1].wo.x, ris_samples[1].wo.y, ris_samples[1].wo.z));
-	ris_samples[1].wo = float3(v.x,v.y,v.z);
+	//auto v =  bsdf->GetFrame().ToLocal(Vector(ris_samples[1].wo.x, ris_samples[1].wo.y, ris_samples[1].wo.z));
+	//ris_samples[1].wo = float3(v.x,v.y,v.z);
 
 	ris_samples[1].guide_pdf *= (1.0f - bssrdf_sampling_prob);
 	ris_samples[1].incoming_radiance_pdf = pathGuiding->guiding_surface_incoming_radiance_pdf(
@@ -456,18 +467,6 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	}
 	assert(ris_samples[1].ris_weight >= 0.0f);
 	assert(sum_ris_weights >= 0.0f);
-
-	// =============
-
-	////float* bsdf_pdf = pdfW;
-	////float _mis_pdf;
-	////float* mis_pdf = &_mis_pdf;
-	//////BsdfEval bsdf_eval;
-	//////float _unguided_bsdf_pdf;
-	//////float* unguided_bsdf_pdf = &_unguided_bsdf_pdf;
-	//////float3 _wo;
-	//////float3* wo = &_wo;
-	////float sampled_roughness;
 
 	// ------------------------------------------------------------------------------
 	// Sample/Select a sample from the RIS candidates proportional to the target
@@ -510,13 +509,14 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 	*eta = ris_samples[ris_idx].eta;
 	*bsdf_eval = ris_samples[ris_idx].bsdf_eval;
 	
-	localSampledDir = Vector(ris_samples[ris_idx].wo.x, ris_samples[ris_idx].wo.y, ris_samples[ris_idx].wo.z);
-	
-	*absCosSampledDir = fabsf(CosTheta(localSampledDir));
-	// to world
-	Vector ww = bsdf->GetFrame().ToWorld(localSampledDir);
-	ww = Normalize(ww);
-	*wo = float3(ww.x, ww.y, ww.z);
+	//localSampledDir = Vector(ris_samples[ris_idx].wo.x, ris_samples[ris_idx].wo.y, ris_samples[ris_idx].wo.z);
+	//
+	////*absCosSampledDir = fabsf(CosTheta(localSampledDir));
+	//// to world
+	//Vector ww = bsdf->GetFrame().ToWorld(localSampledDir);
+	//ww = Normalize(ww);
+	//*wo = float3(ww.x, ww.y, ww.z);
+	*wo = ris_samples[ris_idx].wo;
 
 	//assert(isfinite_safe(guide_pdf));
 	//assert(isfinite_safe(*bsdf_pdf));
@@ -571,9 +571,10 @@ bool SampleBSDF_guiding(BSDF* bsdf, //Vector* sampledDir,
 
 bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 	const float u0, const float u1,
-	Spectrum* out_spectrum,
-	float* pdfW, float* absCosSampledDir,
-	BSDFEvent* event) const
+	Spectrum* bsdf_weight, // bsdf_eval / bsdf_pdf
+	float* bsdf_pdf, 
+	float* absCosSampledDir,
+	BSDFEvent* event, PathGuiding* pathGuiding) const
 {
 	const bool use_surface_guiding = pathGuiding->state->use_surface_guiding;
 	const float guiding_sampling_prob = pathGuiding->state->surface_guiding_sampling_prob;
@@ -588,7 +589,7 @@ bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 
 		Spectrum result = bsdf->GetMaterial()->Sample(hitPoint,
 			localFixedDir, &localSampledDir, u0, u1, hitPoint.passThroughEvent,
-			pdfW, event);
+			bsdf_pdf, event);
 		if (result.Black())
 			return false;
 
@@ -608,7 +609,7 @@ bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 		{
 			int y = 0;
 		}
-		if (abs(directPDF - *pdfW) > 0.01)
+		if (abs(directPDF - *bsdf_pdf) > 0.01)
 		{
 			int y = 0;
 		}*/
@@ -634,28 +635,32 @@ bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 			const float absDotSampledDirNG = AbsDot(*sampledDir, hitPoint.geometryN);
 			result *= (absDotSampledDirNG / absDotFixedDirNG);
 		}
-		*out_spectrum = result;
+		*bsdf_weight = result;
 		return true;
 	}
 	else
 	{
 		BsdfEval bsdf_eval;
 		float3 wo;
-		float bsdf_pdf;
+		//float bsdf_pdf;
 		float mis_pdf;
 		float unguided_bsdf_pdf;
 		float2 sampled_roughness;
 		float eta;
 
-		bool ok = SampleBSDF_guiding(bsdf, u0, u1, absCosSampledDir, event,
-			&bsdf_eval, &wo, &bsdf_pdf, &mis_pdf, &unguided_bsdf_pdf, &sampled_roughness, &eta);
+		bool ok = SampleBSDF_guiding(pathGuiding,bsdf, u0, u1,  event,
+			&bsdf_eval, &wo, bsdf_pdf, &mis_pdf, &unguided_bsdf_pdf, &sampled_roughness, &eta);
 		if (ok)
 		{
+			
 
 			HitPoint& hitPoint = bsdf->hitPoint;
-			*out_spectrum = bsdf_eval.sum;
+			*bsdf_weight = bsdf_eval.sum / *bsdf_pdf;
 			*sampledDir = Vector(wo.x, wo.y, wo.z);
-			*pdfW = bsdf_pdf;
+
+			auto localSampledDir = hitPoint.GetFrame().ToLocal(*sampledDir);
+			*absCosSampledDir = fabsf(CosTheta(localSampledDir));
+			//*pdfW = bsdf_pdf;
 
 			// Shadow terminator artefact avoidance
 			if ((*event & REFLECT) &&
@@ -663,7 +668,7 @@ bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 				&& (hitPoint.shadeN != hitPoint.interpolatedN)) {
 				const Vector& lightDir = hitPoint.fromLight ? hitPoint.fixedDir : (*sampledDir);
 
-				(*out_spectrum) *= _ShadowTerminatorAvoidanceFactor(hitPoint.GetLandingInterpolatedN(),
+				(*bsdf_weight) *= _ShadowTerminatorAvoidanceFactor(hitPoint.GetLandingInterpolatedN(),
 					hitPoint.GetLandingShadeN(), lightDir);
 			}
 
@@ -671,7 +676,7 @@ bool PathTracer::SampleBSDF(BSDF* bsdf, Vector* sampledDir,
 			if (hitPoint.fromLight) {
 				const float absDotFixedDirNG = AbsDot(hitPoint.fixedDir, hitPoint.geometryN);
 				const float absDotSampledDirNG = AbsDot(*sampledDir, hitPoint.geometryN);
-				(*out_spectrum) *= (absDotSampledDirNG / absDotFixedDirNG);
+				(*bsdf_weight) *= (absDotSampledDirNG / absDotFixedDirNG);
 			}
 			return true;
 		}

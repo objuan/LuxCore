@@ -163,6 +163,53 @@ inline Normal one_Normal() { return Normal(1, 1, 1); }
 //openpgl::cpp::SurfaceSamplingDistribution* opgl_surface_sampling_distribution = nullptr;
 //openpgl::cpp::VolumeSamplingDistribution* opgl_volume_sampling_distribution = nullptr;
 
+
+typedef enum GuidingDistributionType {
+	GUIDING_TYPE_PARALLAX_AWARE_VMM = 0,
+	GUIDING_TYPE_DIRECTIONAL_QUAD_TREE = 1,
+	GUIDING_TYPE_VMM = 2,
+
+	GUIDING_NUM_TYPES,
+} GuidingDistributionType;
+
+/* Guiding Directional Sampling Type */
+
+typedef enum GuidingDirectionalSamplingType {
+	GUIDING_DIRECTIONAL_SAMPLING_TYPE_PRODUCT_MIS = 0,
+	GUIDING_DIRECTIONAL_SAMPLING_TYPE_RIS = 1,
+	GUIDING_DIRECTIONAL_SAMPLING_TYPE_ROUGHNESS = 2,
+
+	GUIDING_DIRECTIONAL_SAMPLING_NUM_TYPES,
+} GuidingDirectionalSamplingType;
+
+
+struct GuidingParams {
+	/* The subset of path guiding parameters that can trigger a creation/rebuild
+	 * of the guiding field. */
+	bool use = true;
+	bool use_surface_guiding = true;
+	bool use_volume_guiding = true;
+
+	GuidingDistributionType type = GUIDING_TYPE_PARALLAX_AWARE_VMM;
+	GuidingDirectionalSamplingType sampling_type = GUIDING_DIRECTIONAL_SAMPLING_TYPE_PRODUCT_MIS;
+	float roughness_threshold = 0.05f;
+	int training_samples = 128;
+	bool deterministic = false;
+
+	GuidingParams() = default;
+
+	bool modified(const GuidingParams& other) const
+	{
+		return !((use == other.use) && (use_surface_guiding == other.use_surface_guiding) &&
+			(use_volume_guiding == other.use_volume_guiding) && (type == other.type) &&
+			(sampling_type == other.sampling_type) &&
+			(training_samples == other.training_samples) &&
+			(roughness_threshold == other.roughness_threshold) &&
+			(deterministic == other.deterministic));
+	}
+};
+
+
 typedef struct
 {
 	bool use_guiding_direct_light;
@@ -176,28 +223,10 @@ typedef struct
 	float scrambling_distance=0;
 	int seed = 0;
 	
+	//int training_samples = 128;
+
 } KernelData;
 
-typedef struct KernelGlobalsCPU 
-{
-	KernelData data;
-	// GLOBAL
-	openpgl::cpp::Field* opgl_guiding_field = nullptr;
-	// generale per conservare tutti i SampleData
-	openpgl::cpp::SampleStorage* opgl_sample_data_storage = nullptr;
-
-	// FOR EACH THREAD
-	
-	openpgl::cpp::SurfaceSamplingDistribution* opgl_surface_sampling_distribution = nullptr;
-    openpgl::cpp::VolumeSamplingDistribution* opgl_volume_sampling_distribution = nullptr;
-
-	// utility class to help generate multiple SampleData objects during the path/random walk generation process. For the construction of a path/walk, 
-	// each new PathSegment is stored in the PathSegmentStorage
-	// When the walk is finished or terminated, the - radiance - SampleData is generated using a backpropagation process.The resulting samples are then be passed to the global SampleDataStorage.
-	openpgl::cpp::PathSegmentStorage* opgl_path_segment_storage = nullptr;
-} KernelGlobalsCPU;
-
-typedef const KernelGlobalsCPU*  KernelGlobals;
 
 class IntegratorPath
 {

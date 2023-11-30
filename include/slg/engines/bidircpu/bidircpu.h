@@ -29,6 +29,9 @@
 #include "slg/bsdf/bsdf.h"
 #include "slg/volumes/volume.h"
 
+class PathGuidingGlobalData;
+class PathGuiding;
+
 namespace slg {
 
 //------------------------------------------------------------------------------
@@ -109,6 +112,8 @@ protected:
 
 	static const Film::FilmChannels eyeSampleResultsChannels;
 	static const Film::FilmChannels lightSampleResultsChannels;
+
+	PathGuiding* pathGuiding;
 };
 
 class SobolSamplerSharedData;
@@ -153,6 +158,9 @@ public:
 	bool forceBlackBackground;
 
 	friend class BiDirCPURenderThread;
+
+	PathGuidingGlobalData* pathGuidingGlobalData;
+	std::mutex g_mutex;
 
 protected:
 	static const luxrays::Properties &GetDefaultProps();

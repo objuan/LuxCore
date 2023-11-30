@@ -32,7 +32,7 @@ using namespace luxrays;
 using namespace slg;
 
 std::ofstream* log_file=NULL;
-PathGuiding *pathGuiding=NULL;
+//PathGuiding *pathGuiding=NULL;
 
 //bool kernel_data::use_guiding_direct_light = true;
 //bool kernel_data::use_guiding_mis_weights = true;
@@ -45,7 +45,7 @@ Point old;
 
 PathCPURenderThread::PathCPURenderThread(PathCPURenderEngine *engine,
 		const u_int index, IntersectionDevice *device) :
-		CPUNoTileRenderThread(engine, index, device) {
+		CPUNoTileRenderThread(engine, index, device), pathGuiding(NULL){
 }
 
 void PathCPURenderThread::RenderFunc() {
@@ -93,10 +93,12 @@ void PathCPURenderThread::RenderFunc() {
 		delete pathGuiding;
 	}
 
-	pathGuiding = new PathGuiding(engine, threadIndex, eyeSampler, pathTracer.eyeSampleSize);
-	engine->pathGuiding = pathGuiding;
+	pathGuiding = new PathGuiding(engine->pathGuidingGlobalData, threadIndex, eyeSampler, pathTracer.eyeSampleSize);
+	//engine->pathTracer.pathGuiding = pathGuiding;
+	//engine->pathGuiding = pathGuiding;
 	//engine->pathGuiding->enabled = guiding_blend_factor > 0.1f;
 	pathGuiding->kg->data.surface_guiding_probability = guiding_blend_factor;
+	pathGuiding->enabled = guiding_blend_factor > 0.1f;
 
 	SLG_LOG("PathCPURenderThread: guiding_blend_factor" << pathGuiding->kg->data.surface_guiding_probability);
 	// ==============
@@ -125,6 +127,7 @@ void PathCPURenderThread::RenderFunc() {
 			engine->renderConfig->scene, engine->film,
 			&varianceClamping);
 
+	pathTracerThreadState.pathGuiding = pathGuiding;
 	//--------------------------------------------------------------------------
 	// Trace paths
 	//--------------------------------------------------------------------------
@@ -165,16 +168,21 @@ void PathCPURenderThread::RenderFunc() {
 		/// ============
 		/// 
 		/// 
+		{
+			std::lock_guard<std::mutex> lock(engine->g_mutex);
+			pathGuiding->guiding_push_sample_data_to_global_storage();
+		}
+		/// 
+		if (threadIndex==0)
 	//	if (engine->pathGuiding->state->use_surface_guiding)
 		{
-			pathGuiding->guiding_push_sample_data_to_global_storage();
-
 			/// 
 			const size_t num_valid_samples = pathGuiding->kg->opgl_sample_data_storage->GetSizeSurface() +
 				pathGuiding->kg->opgl_sample_data_storage->GetSizeVolume();
 			//if (num_valid_samples >= 1024)
-			if (num_valid_samples >= 20000 )
+			if (num_valid_samples >= 10000 )
 			{
+				std::lock_guard<std::mutex> lock(engine->g_mutex);
 				pathGuiding->kg->opgl_guiding_field->Update(*pathGuiding->kg->opgl_sample_data_storage);
 				pathGuiding->kg->opgl_sample_data_storage->Clear();
 			}

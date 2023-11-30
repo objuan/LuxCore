@@ -9,59 +9,31 @@ using namespace std;
 using namespace luxrays;
 using namespace slg;
 
+/*
+* global
+* 
+ *guiding_field,
+ void *sample_data_storage
 
-class PathGuiding
+*/
+// UNO PER THREAD
+typedef class PathGuidingGlobalData
 {
 public:
-	KernelGlobalsCPU *kg;
-	IntegratorState* state;
+	openpgl::cpp::Field* guiding_field = nullptr;
+	// generale per conservare tutti i SampleData
+	openpgl::cpp::SampleStorage* sample_data_storage = nullptr;
 
-	//float guiding_blend_factor;
-	bool enabled;
+	// params
+	float surface_guiding_probability = 0.5;
+	int training_samples = 128;
 
-	RNGState rng_state;
-
-	Sampler* sampler = nullptr;
-	int sampleStart;
-	static const int SampleSize = 2;
-
-public:
-
-	PathGuiding(CPURenderEngine* engine, u_int threadIndex, Sampler* sampler, int sampleStart)
-		:sampler(sampler), sampleStart(sampleStart)
+	PathGuidingGlobalData()
 	{
-		InitializeKernel();
-
-		enabled = true;
-		//guiding_blend_factor = 0.5f;
-	
-		state = new IntegratorState();
-
-		rng_state.rng_hash = 0;
-
-		int seedBase = 0; // engine->seedBaseengine->seedBase
-		RandomGenerator* rndGen = new RandomGenerator(seedBase + 1 + threadIndex);
-	}
-
-	virtual	~PathGuiding()
-	{
-		delete kg;
-		delete state;
-	}
-
-	float path_state_rng_1D()
-	{
-		return sampler->GetSample(sampleStart+1);
-	}
-
-	void InitializeKernel()
-	{
-		kg = new KernelGlobalsCPU();
-
 		openpgl::cpp::Device odevice(PGL_DEVICE_TYPE_CPU_4);
 
 		/* The storage container which holds the training data/samples generated during the last rendering iteration. */
-		openpgl::cpp::SampleStorage* guiding_sample_data_storage = new openpgl::cpp::SampleStorage();
+		sample_data_storage = new openpgl::cpp::SampleStorage();
 		//guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
 
 		PGLFieldArguments fieldArgs;
@@ -70,12 +42,60 @@ public:
 
 		//	openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(odevice, field_args);
 
-			 /* The guiding field which holds the representation of the incident radiance field for the
-		   * complete scene. */
+				/* The guiding field which holds the representation of the incident radiance field for the
+			* complete scene. */
 
-		openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(&odevice, fieldArgs);
+		guiding_field = new openpgl::cpp::Field(&odevice, fieldArgs);
+
+
+	}
+};
+
+// UNO PER THREAD
+typedef class KernelGlobalsCPU
+{
+public:
+	KernelData data;
+
+	/* The number of already performed training iterations for the guiding field. */
+	int guiding_update_count = 0;
+
+	// FROM GLOBAL
+	openpgl::cpp::Field* opgl_guiding_field = nullptr;
+	// generale per conservare tutti i SampleData
+	openpgl::cpp::SampleStorage* opgl_sample_data_storage = nullptr;
+
+	// FOR EACH THREAD
+
+	openpgl::cpp::SurfaceSamplingDistribution* opgl_surface_sampling_distribution = nullptr;
+	openpgl::cpp::VolumeSamplingDistribution* opgl_volume_sampling_distribution = nullptr;
+
+	// utility class to help generate multiple SampleData objects during the path/random walk generation process. For the construction of a path/walk, 
+	// each new PathSegment is stored in the PathSegmentStorage
+	// When the walk is finished or terminated, the - radiance - SampleData is generated using a backpropagation process.The resulting samples are then be passed to the global SampleDataStorage.
+	openpgl::cpp::PathSegmentStorage* opgl_path_segment_storage = nullptr;
+
+	KernelGlobalsCPU(PathGuidingGlobalData* globalData)
+	{
+		//openpgl::cpp::Device odevice(PGL_DEVICE_TYPE_CPU_4);
+
+		///* The storage container which holds the training data/samples generated during the last rendering iteration. */
+		//openpgl::cpp::SampleStorage* guiding_sample_data_storage = new openpgl::cpp::SampleStorage();
+		////guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
+
+		//PGLFieldArguments fieldArgs;
+
+		//pglFieldArgumentsSetDefaults(fieldArgs, PGL_SPATIAL_STRUCTURE_KDTREE, PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM);
+
+		////	openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(odevice, field_args);
+
+		//		/* The guiding field which holds the representation of the incident radiance field for the
+		//	* complete scene. */
+
+		//openpgl::cpp::Field* guiding_field = new openpgl::cpp::Field(&odevice, fieldArgs);
 
 		/* The number of already performed training iterations for the guiding field. */
+
 		int guiding_update_count = 0;
 
 		std::cout << "Field created successfully... exiting\n";
@@ -91,21 +111,73 @@ public:
 			// Each spatial leaf node(a.k.a.Region) contains a directional representation for the local incident radiance distribution.
 
 		// condivise
-		kg->opgl_sample_data_storage = guiding_sample_data_storage;
-		kg->opgl_guiding_field = guiding_field; // conserva le info della radiance
+		opgl_sample_data_storage = globalData->sample_data_storage;
+		opgl_guiding_field = globalData->guiding_field; // conserva le info della radiance
 
-		kg->opgl_path_segment_storage = new openpgl::cpp::PathSegmentStorage();
-		kg->opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(guiding_field);
-		kg->opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(guiding_field);
+		// per thrad
+
+		opgl_path_segment_storage = new openpgl::cpp::PathSegmentStorage();
+		opgl_surface_sampling_distribution = new openpgl::cpp::SurfaceSamplingDistribution(opgl_guiding_field);
+		opgl_volume_sampling_distribution = new openpgl::cpp::VolumeSamplingDistribution(opgl_guiding_field);
 
 		int transparent_max_bounce = 128;
 		int max_bounce = 256;
 		bool train = true;
 		if (train) {
-			kg->opgl_path_segment_storage->Reserve(transparent_max_bounce + max_bounce + 3);
-			kg->opgl_path_segment_storage->Clear();
+			opgl_path_segment_storage->Reserve(transparent_max_bounce + max_bounce + 3);
+			opgl_path_segment_storage->Clear();
 		}
+		
 	}
+} KernelGlobalsCPU;
+
+typedef const KernelGlobalsCPU* KernelGlobals;
+
+class PathGuiding
+{
+public:
+	KernelGlobalsCPU *kg;
+	IntegratorState* state;
+
+	bool enabled;
+
+	RNGState rng_state;
+
+	// sampler
+	Sampler* sampler = nullptr;
+	int sampleStart;
+	static const int SampleSize = 2;
+
+public:
+
+	PathGuiding(PathGuidingGlobalData* global, u_int threadIndex, Sampler* sampler, int sampleStart)
+		:sampler(sampler), sampleStart(sampleStart)
+	{
+		//InitializeKernel();
+		kg = new KernelGlobalsCPU(global);
+
+		enabled = true;
+
+		state = new IntegratorState();
+
+		rng_state.rng_hash = 0;
+
+		//int seedBase = 0; // engine->seedBaseengine->seedBase
+		//RandomGenerator* rndGen = new RandomGenerator(seedBase + 1 + threadIndex);
+	}
+
+	virtual	~PathGuiding()
+	{
+		delete kg;
+		delete state;
+	}
+
+	float path_state_rng_1D()
+	{
+		return sampler->GetSample(sampleStart+1);
+	}
+
+	
 
 	void surface_shader_prepare_guiding(float3 P,Normal N)
 	{
@@ -204,7 +276,7 @@ public:
 	 * If the path is not terminated this call is usually followed by a call of
 	 * guiding_record_surface_bounce. */
 	void guiding_record_surface_segment(
-		Point O, Vector outDir)
+		Point O, Vector outDir) // world coordinate
 	{
 #if  PATH_GUIDING_LEVEL >= 1
 		//if (!kernel_data.integrator.train_guiding) {
@@ -233,10 +305,10 @@ public:
 	/* Records the surface scattering event at the current vertex position of the segment. */
 	void guiding_record_surface_bounce(
 		//const Ray* ray,
-		const Spectrum weight,
+		const Spectrum weight, // diviso per pdf
 		const float pdf,
 		const float3 N,
-		const float3 wo,
+		const float3 wo, // world coordinate
 		const float2 roughness,
 		const float eta)
 	{
@@ -264,7 +336,7 @@ public:
 		openpgl::cpp::SetScatteringWeight(state->path.path_segment, guiding_vec3f(weight_rgb));
 		openpgl::cpp::SetIsDelta(state->path.path_segment, is_delta);
 		openpgl::cpp::SetEta(state->path.path_segment, eta);
-		openpgl::cpp::SetRoughness(state->path.path_segment, min_roughness);
+		//openpgl::cpp::SetRoughness(state->path.path_segment, min_roughness);
 #endif
 	}
 

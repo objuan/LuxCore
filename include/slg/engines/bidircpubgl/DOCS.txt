@@ -1,5 +1,36 @@
 BLENDER
 
+
+run_main_render_loop()
+	run_update_for_next_iteration
+		guiding_reset = (guiding_params.use) ? scene->need_reset(false) : false;
+		path_trace_->set_guiding_params(guiding_params, guiding_reset);
+	render_pipeline()
+		guiding_prepare_structures
+			const bool train = (guiding_params_.training_samples == 0) ||
+                     (guiding_field_->GetIteration() < guiding_params_.training_samples);
+			guiding_init_kernel_globals(field,storage,train)
+			if (train)
+				 render_scheduler_.set_limit_samples_per_update(4);
+			else
+				render_scheduler_.set_limit_samples_per_update(0);
+		...
+		path_trace(render_work); // renbder
+			ogni thread -> render_samples_full_pipeline()
+				..
+				per samples_num=4
+					- kernels_.integrator_megakernel(kernel_globals, state, render_buffer);
+					-guiding_push_sample_data_to_global_storage
+		...
+		guiding_update_structures(); // un po  //1 giro->14000 samples, 2 -> 24000
+		  
+		// Update path guiding
+		const bool guiding_reset = (guiding_params.use) ? scene->need_reset(false) : false;
+		path_trace_->set_guiding_params(guiding_params, guiding_reset); // no nfa niente i params sono i soliti
+		
+
+//===========
+
 /* Path tracing: sample point on light and evaluate light shader, then  queue shadow ray to be traced. */
 integrate_surface_direct_light
 	float3 rand_light;
