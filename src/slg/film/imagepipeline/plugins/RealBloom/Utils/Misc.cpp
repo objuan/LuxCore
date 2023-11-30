@@ -126,7 +126,11 @@ const std::string& getPathSeparator()
 
 const std::string& getExecDir()
 {
+#if _WINDOWS
+    static std::string execDir = "C:\\Lavoro\\luxcorerender\\WindowsCompile\\Build_CMake\\LuxCore\\bin\\Debug\\realBloom\\";
+#else
     static std::string execDir = "/mnt/z/RealBloom/";
+#endif
 
     /*if (execDir.empty())
     {

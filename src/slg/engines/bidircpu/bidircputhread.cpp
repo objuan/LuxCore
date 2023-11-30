@@ -793,7 +793,8 @@ void BiDirCPURenderThread::RenderFunc() {
 			continue;
 		}
 
-		if (camera->filmWidth  != engine->film->GetCameraWidth())
+		if (camera->filmWidth  != engine->film->GetCameraWidth()
+			|| camera->filmHeight != engine->film->GetCameraHeight())
 		{
 			camera->Update(engine->film->GetCameraWidth(), engine->film->GetCameraHeight(), engine->film->GetSubRegion());
 		}

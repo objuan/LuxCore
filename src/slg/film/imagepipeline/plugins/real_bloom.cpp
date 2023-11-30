@@ -186,34 +186,53 @@ void RealBloomPlugin::Apply(Film &film, const u_int index) {
 
     Spectrum *pixels = (Spectrum *)film.channel_IMAGEPIPELINEs[index]->GetPixels();
 
-    const u_int width = film.GetWidth();
-    const u_int height = film.GetHeight();
-    const u_int pixelCount = width * height;
+    const u_int _width = film.GetWidth();
+    const u_int _height = film.GetHeight();
+    const u_int camWidth = film.GetCameraWidth();
+    const u_int camHeight = film.GetCameraHeight();
+
+    const u_int pixelCount = camWidth * camHeight;
 
     vector<float> rgbaBuffer(4 * pixelCount);
     vector<float> outBuffer(4 * pixelCount);
 
-    for (u_int i = 0; i < pixelCount; ++i)
-    {
-        rgbaBuffer[i * 4] = pixels[i].c[0];
-        rgbaBuffer[i * 4 + 1] = pixels[i].c[1];
-        rgbaBuffer[i * 4 + 2] = pixels[i].c[2];
-        rgbaBuffer[i * 4 + 3] = 1;
-    }
+    //for (u_int i = 0; i < _pixelCount; ++i)
+    for(u_int x=0;x< camWidth;x++)
+        for (u_int y = 0; y < camHeight; y++)
+        {
+            int dest = (x + y * camWidth)*4;
+            int source = x + y * _width;
+
+            rgbaBuffer[dest ] = pixels[source].c[0];
+            rgbaBuffer[dest  + 1] = pixels[source].c[1];
+            rgbaBuffer[dest  + 2] = pixels[source].c[2];
+            rgbaBuffer[dest  + 3] = 1;
+        }
 
     MyConvolutionParams params;
     params.blendExposure = 1;
 
-    Conv(width, height, &rgbaBuffer,
+    Conv(camWidth, camHeight, &rgbaBuffer,
         (int)imgKernel->getWidth(), (int)imgKernel->getHeight(), &imgKernel->getImageDataVector(),
         outBuffer.data(), "out.exr" , params, false);
 
-    for (u_int i = 0; i < pixelCount; ++i) {
+    for (u_int x = 0; x < camWidth; x++)
+        for (u_int y = 0; y < camHeight; y++)
+        {
+            int dest = (x + y * camWidth) * 4;
+            int source = x + y * _width;
+
+            pixels[source].c[0] = outBuffer[dest];
+            pixels[source].c[1] = outBuffer[dest + 1];
+            pixels[source].c[2] = outBuffer[dest + 2];
+        }
+
+   /* for (u_int i = 0; i < pixelCount; ++i) {
     	const u_int i4 = i * 4;
         pixels[i].c[0] = outBuffer[i4];
     	pixels[i].c[1] = outBuffer[i4+1];
     	pixels[i].c[2] = outBuffer[i4+2];
-    }
+    }*/
 
 	SLG_LOG("RealBloom single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
 }

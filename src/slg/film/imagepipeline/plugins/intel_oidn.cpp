@@ -94,37 +94,39 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
 
     Spectrum *pixels = (Spectrum *)film.channel_IMAGEPIPELINEs[index]->GetPixels();
 
-    const u_int width = film.GetWidth();
-    const u_int height = film.GetHeight();
-    const u_int pixelCount = width * height;
+	if (film.GetWidth() == film.GetCameraWidth())
+	{
+		const u_int width = film.GetWidth();
+		const u_int height = film.GetHeight();
+		const u_int pixelCount = width * height;
 
-    vector<float> outputBuffer(3 * pixelCount);
-    vector<float> albedoBuffer;
-    vector<float> normalBuffer;
+		vector<float> outputBuffer(3 * pixelCount);
+		vector<float> albedoBuffer;
+		vector<float> normalBuffer;
 
-    if (film.HasChannel(Film::ALBEDO)) {
-		albedoBuffer.resize(3 * pixelCount);
-		for (u_int i = 0; i < pixelCount; ++i)
-			film.channel_ALBEDO->GetWeightedPixel(i, &albedoBuffer[i * 3]);
-		
-		//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo0.exr", albedoBuffer, width, height);
+		if (film.HasChannel(Film::ALBEDO)) {
+			albedoBuffer.resize(3 * pixelCount);
+			for (u_int i = 0; i < pixelCount; ++i)
+				film.channel_ALBEDO->GetWeightedPixel(i, &albedoBuffer[i * 3]);
 
-		if (enablePrefiltering) {
-			vector<float> albedoBufferTmp(3 * pixelCount);
-			FilterImage("Albedo", &albedoBuffer[0], &albedoBufferTmp[0],
-				nullptr, nullptr, width, height, false);
-			for (u_int i = 0; i < albedoBuffer.size(); ++i)
-				albedoBuffer[i] = albedoBufferTmp[i];
+			//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo0.exr", albedoBuffer, width, height);
 
-			//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo1.exr", albedoBuffer, width, height);
-		}
+			if (enablePrefiltering) {
+				vector<float> albedoBufferTmp(3 * pixelCount);
+				FilterImage("Albedo", &albedoBuffer[0], &albedoBufferTmp[0],
+					nullptr, nullptr, width, height, false);
+				for (u_int i = 0; i < albedoBuffer.size(); ++i)
+					albedoBuffer[i] = albedoBufferTmp[i];
 
-        // Normals can only be used if albedo is supplied as well
-        if (film.HasChannel(Film::AVG_SHADING_NORMAL)) {
-            normalBuffer.resize(3 * pixelCount);
-            for (u_int i = 0; i < pixelCount; ++i)
-                film.channel_AVG_SHADING_NORMAL->GetWeightedPixel(i, &normalBuffer[i * 3]);
-			
+				//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo1.exr", albedoBuffer, width, height);
+			}
+
+			// Normals can only be used if albedo is supplied as well
+			if (film.HasChannel(Film::AVG_SHADING_NORMAL)) {
+				normalBuffer.resize(3 * pixelCount);
+				for (u_int i = 0; i < pixelCount; ++i)
+					film.channel_AVG_SHADING_NORMAL->GetWeightedPixel(i, &normalBuffer[i * 3]);
+
 				//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-normal.exr", normalBuffer, width, height);
 
 				if (enablePrefiltering) {
@@ -136,24 +138,124 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
 
 					//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-normal1.exr", normalBuffer, width, height);
 				}
-        } else
-            SLG_LOG("[IntelOIDNPlugin] Warning: AVG_SHADING_NORMAL AOV not found");
-    } else
-		SLG_LOG("[IntelOIDNPlugin] Warning: ALBEDO AOV not found");
+			}
+			else
+				SLG_LOG("[IntelOIDNPlugin] Warning: AVG_SHADING_NORMAL AOV not found");
+		}
+		else
+			SLG_LOG("[IntelOIDNPlugin] Warning: ALBEDO AOV not found");
 
-	FilterImage("Image Pipeline", (float *)pixels, &outputBuffer[0],
+		FilterImage("Image Pipeline", (float*)pixels, &outputBuffer[0],
 			(albedoBuffer.size() > 0) ? &albedoBuffer[0] : nullptr,
 			(normalBuffer.size() > 0) ? &normalBuffer[0] : nullptr,
 			width, height, enablePrefiltering);
 
- //   SLG_LOG("IntelOIDNPlugin copying output buffer");
-    for (u_int i = 0; i < pixelCount; ++i) {
-        const u_int i3 = i * 3;
-        pixels[i].c[0] = Lerp(sharpness, outputBuffer[i3], pixels[i].c[0]);
-        pixels[i].c[1] = Lerp(sharpness, outputBuffer[i3 + 1], pixels[i].c[1]);
-        pixels[i].c[2] = Lerp(sharpness, outputBuffer[i3 + 2], pixels[i].c[2]);
-	}
+		//   SLG_LOG("IntelOIDNPlugin copying output buffer");
+		for (u_int i = 0; i < pixelCount; ++i) {
+			const u_int i3 = i * 3;
+			pixels[i].c[0] = Lerp(sharpness, outputBuffer[i3], pixels[i].c[0]);
+			pixels[i].c[1] = Lerp(sharpness, outputBuffer[i3 + 1], pixels[i].c[1]);
+			pixels[i].c[2] = Lerp(sharpness, outputBuffer[i3 + 2], pixels[i].c[2]);
+		}
 
+	}
+	else
+	{
+		// buffer + èpiccolo
+
+		u_int _width = film.GetWidth();
+		u_int _height = film.GetHeight();
+		const u_int camWidth = film.GetCameraWidth();
+		const u_int camHeight = film.GetCameraHeight();
+
+		const u_int pixelCount = camWidth * camHeight;
+
+		vector<float> inBuffer(3 * pixelCount);
+		vector<float> outputBuffer(3 * pixelCount);
+		vector<float> albedoBuffer;
+		vector<float> normalBuffer;
+
+		for (u_int x = 0; x < camWidth; x++)
+			for (u_int y = 0; y < camHeight; y++)
+			{
+				int dest = (x + y * camWidth) * 3;
+				int source = x + y * _width;
+				inBuffer[dest] = pixels[source].c[0];
+				inBuffer[dest + 1] = pixels[source].c[1];
+				inBuffer[dest + 2] = pixels[source].c[2];
+			}
+
+		if (film.HasChannel(Film::ALBEDO)) {
+
+			albedoBuffer.resize(3 * pixelCount);
+			for (u_int x = 0; x < camWidth; x++)
+				for (u_int y = 0; y < camHeight; y++)
+				{
+					int dest = (x + y * camWidth) * 3;
+					int source = x + y * _width;
+					film.channel_ALBEDO->GetWeightedPixel(source, &albedoBuffer[dest]);
+				}
+
+			//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo0.exr", albedoBuffer, width, height);
+
+			if (enablePrefiltering) {
+				vector<float> albedoBufferTmp(3 * pixelCount);
+				FilterImage("Albedo", &albedoBuffer[0], &albedoBufferTmp[0],
+					nullptr, nullptr, camWidth, camHeight, false);
+				for (u_int i = 0; i < albedoBuffer.size(); ++i)
+					albedoBuffer[i] = albedoBufferTmp[i];
+
+				//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-albedo1.exr", albedoBuffer, width, height);
+			}
+
+			// Normals can only be used if albedo is supplied as well
+			if (film.HasChannel(Film::AVG_SHADING_NORMAL)) {
+				normalBuffer.resize(3 * pixelCount);
+				//for (u_int i = 0; i < pixelCount; ++i)
+				for (u_int x = 0; x < camWidth; x++)
+					for (u_int y = 0; y < camHeight; y++)
+					{
+						int dest = (x + y * camWidth) * 3;
+						int source = x + y * _width;
+						film.channel_AVG_SHADING_NORMAL->GetWeightedPixel(source, &normalBuffer[dest]);
+					}
+
+				//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-normal.exr", normalBuffer, width, height);
+
+				if (enablePrefiltering) {
+					vector<float> normalBufferTmp(3 * pixelCount);
+					FilterImage("Normal", &normalBuffer[0], &normalBufferTmp[0],
+						nullptr, nullptr, camWidth, camHeight, false);
+					for (u_int i = 0; i < normalBuffer.size(); ++i)
+						normalBuffer[i] = normalBufferTmp[i];
+
+					//GenericFrameBuffer<3, 0, float>::SaveHDR("debug-normal1.exr", normalBuffer, width, height);
+				}
+			}
+			else
+				SLG_LOG("[IntelOIDNPlugin] Warning: AVG_SHADING_NORMAL AOV not found");
+		}
+		else
+			SLG_LOG("[IntelOIDNPlugin] Warning: ALBEDO AOV not found");
+
+		FilterImage("Image Pipeline", (float*)&inBuffer[0], &outputBuffer[0],
+			(albedoBuffer.size() > 0) ? &albedoBuffer[0] : nullptr,
+			(normalBuffer.size() > 0) ? &normalBuffer[0] : nullptr,
+			camWidth, camHeight, enablePrefiltering);
+
+		//   SLG_LOG("IntelOIDNPlugin copying output buffer");
+		for (u_int x = 0; x < camWidth; x++)
+			for (u_int y = 0; y < camHeight; y++)
+			{
+				int dest = (x + y * camWidth) * 3;
+				int source = x + y * _width;
+
+				pixels[source].c[0] = Lerp(sharpness, outputBuffer[dest], pixels[source].c[0]);
+				pixels[source].c[1] = Lerp(sharpness, outputBuffer[dest+1], pixels[source].c[1]);
+				pixels[source].c[2] = Lerp(sharpness, outputBuffer[dest+2], pixels[source].c[2]);
+			}
+
+	}
 	//SLG_LOG("IntelOIDNPlugin single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
 }
 

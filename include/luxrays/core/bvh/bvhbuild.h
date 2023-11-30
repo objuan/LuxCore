@@ -22,7 +22,7 @@
 #include <vector>
 #include <ostream>
 
-#ifdef WINDOWS 
+#ifdef _WINDOWS 
 #include <embree3/rtcore.h>
 #include <embree3/rtcore_builder.h>
 #else
