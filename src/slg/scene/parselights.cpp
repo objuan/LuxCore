@@ -309,6 +309,24 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 		sl->SetIndirectDiffuseVisibility(props.Get(Property(propName + ".visibility.indirect.diffuse.enable")(true)).Get<bool>());
 		sl->SetIndirectGlossyVisibility(props.Get(Property(propName + ".visibility.indirect.glossy.enable")(true)).Get<bool>());
 		sl->SetIndirectSpecularVisibility(props.Get(Property(propName + ".visibility.indirect.specular.enable")(true)).Get<bool>());
+		
+		ColorSpaceConfig::FromProperties(props, propName, sl->colorSpaceConfig, ColorSpaceConfig::defaultLuxCoreConfig);
+		if (sl->colorSpaceConfig.colorSpaceType == ColorSpaceConfig::OPENCOLORIO_COLORSPACE)
+		{
+			//sl->colorSpaceConv = &colorSpaceConv;
+
+			auto configFileName = sl->colorSpaceConfig.ocio.configName;
+			auto inputColorSpace = sl->colorSpaceConfig.ocio.colorSpaceName;
+
+			OCIO::ConstConfigRcPtr config = (configFileName == "") ?
+				OCIO::GetCurrentConfig() :
+				OCIO::Config::CreateFromFile(SLG_FileNameResolver.ResolveFile(configFileName).c_str());
+
+			OCIO::ConstProcessorRcPtr processor = config->getProcessor(inputColorSpace.c_str(), OCIO::ROLE_SCENE_LINEAR);
+
+			//OCIO::ConstCPUProcessorRcPtr cpu;
+			sl->cpu = processor->getDefaultCPUProcessor();
+		}
 
 		ColorSpaceConfig::FromProperties(props, propName, sl->colorSpaceConfig, ColorSpaceConfig::defaultLuxCoreConfig);
 		if (sl->colorSpaceConfig.colorSpaceType == ColorSpaceConfig::OPENCOLORIO_COLORSPACE)
@@ -458,23 +476,23 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 		if (cil->useVisibilityMapCache)
 			cil->visibilityMapCacheParams = EnvLightVisibilityCache::Properties2Params(propName, props);
 
-		//ColorSpaceConfig::FromProperties(props, propName, cil->colorSpaceConfig, ColorSpaceConfig::defaultLuxCoreConfig);
-		//if (cil->colorSpaceConfig.colorSpaceType == ColorSpaceConfig::OPENCOLORIO_COLORSPACE)
-		//{
-		//	//sl->colorSpaceConv = &colorSpaceConv;
+/*		ColorSpaceConfig::FromProperties(props, propName, cil->colorSpaceConfig, ColorSpaceConfig::defaultLuxCoreConfig);
+		if (cil->colorSpaceConfig.colorSpaceType == ColorSpaceConfig::OPENCOLORIO_COLORSPACE)
+		{
+			//sl->colorSpaceConv = &colorSpaceConv;
 
-		//	auto configFileName = cil->colorSpaceConfig.ocio.configName;
-		//	auto inputColorSpace = cil->colorSpaceConfig.ocio.colorSpaceName;
+			auto configFileName = cil->colorSpaceConfig.ocio.configName;
+			auto inputColorSpace = cil->colorSpaceConfig.ocio.colorSpaceName;
 
-		//	OCIO::ConstConfigRcPtr config = (configFileName == "") ?
-		//		OCIO::GetCurrentConfig() :
-		//		OCIO::Config::CreateFromFile(SLG_FileNameResolver.ResolveFile(configFileName).c_str());
+			OCIO::ConstConfigRcPtr config = (configFileName == "") ?
+				OCIO::GetCurrentConfig() :
+				OCIO::Config::CreateFromFile(SLG_FileNameResolver.ResolveFile(configFileName).c_str());
 
-		//	OCIO::ConstProcessorRcPtr processor = config->getProcessor(inputColorSpace.c_str(), OCIO::ROLE_SCENE_LINEAR);
+			OCIO::ConstProcessorRcPtr processor = config->getProcessor(inputColorSpace.c_str(), OCIO::ROLE_SCENE_LINEAR);
 
-		//	//OCIO::ConstCPUProcessorRcPtr cpu;
-		//	cil->cpu = processor->getDefaultCPUProcessor();
-		//}
+			//OCIO::ConstCPUProcessorRcPtr cpu;
+			cil->cpu = processor->getDefaultCPUProcessor();
+		}*/
 
 		lightSource = cil;
 	} else if (lightType == "sharpdistant") {

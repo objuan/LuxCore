@@ -226,7 +226,7 @@ bool EmbreeAccel::MeshPtrCompare(const Mesh *p0, const Mesh *p1) {
 }
 
 bool EmbreeAccel::Intersect(const Ray *ray, RayHit *hit) const {
-#ifndef EMBREE4
+#ifdef WINDOWS 
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
 
