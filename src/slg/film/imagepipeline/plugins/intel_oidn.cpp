@@ -94,7 +94,7 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
 
     Spectrum *pixels = (Spectrum *)film.channel_IMAGEPIPELINEs[index]->GetPixels();
 
-	if (film.GetWidth() == film.GetCameraWidth())
+	if (film.GetWidth() == film.GetCameraWidth() || film.GetCameraWidth() == 0)
 	{
 		const u_int width = film.GetWidth();
 		const u_int height = film.GetHeight();
@@ -256,7 +256,7 @@ void IntelOIDN::Apply(Film &film, const u_int index) {
 			}
 
 	}
-	//SLG_LOG("IntelOIDNPlugin single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
+	SLG_LOG("IntelOIDNPlugin single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
 }
 
 #endif

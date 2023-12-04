@@ -27,6 +27,13 @@
 
 namespace slg {
 
+	typedef struct OpencolorioCahe {
+		OCIO::ConstConfigRcPtr config;
+		OCIO::GroupTransformRcPtr group;
+		OCIO::DisplayViewTransformRcPtr transform;
+		OCIO::ConstProcessorRcPtr processor;
+		OCIO::ConstCPUProcessorRcPtr cpu;
+	};
 //------------------------------------------------------------------------------
 // OpenColorIO tone mapping
 //------------------------------------------------------------------------------
@@ -83,6 +90,9 @@ private:
 	OCIOConversionType conversionType;
 	
 	std::string configFileName;
+
+	bool cacheInitialized;
+	OpencolorioCahe cache;
 
 	// COLORSPACE_CONVERSION
 	std::string inputColorSpace;

@@ -132,6 +132,7 @@ void RealBloomPlugin::Apply(Film &film, const u_int index) {
 
     if (firstTime)
     {
+        SLG_LOG("[RealBloom] Init");
         firstTime = false;
 
         // Load config
@@ -176,6 +177,7 @@ void RealBloomPlugin::Apply(Film &film, const u_int index) {
                 "C:\\Lavoro\\luxcorerender\\realbloom-main\\data\\out.exr",
                 params, true);
         }
+        SLG_LOG("[RealBloom] Init END");
 
     }
     if (!imgKernel) return;
@@ -188,8 +190,14 @@ void RealBloomPlugin::Apply(Film &film, const u_int index) {
 
     const u_int _width = film.GetWidth();
     const u_int _height = film.GetHeight();
-    const u_int camWidth = film.GetCameraWidth();
-    const u_int camHeight = film.GetCameraHeight();
+    u_int camWidth = film.GetCameraWidth();
+    u_int camHeight = film.GetCameraHeight();
+	
+	if (film.GetCameraWidth() == 0)
+	{
+		camWidth = _width;
+		camHeight = _height;
+	}
 
     const u_int pixelCount = camWidth * camHeight;
 
@@ -212,6 +220,9 @@ void RealBloomPlugin::Apply(Film &film, const u_int index) {
     MyConvolutionParams params;
     params.blendExposure = 1;
 
+	SLG_LOG("[RealBloom] Conv ");
+
+	
     Conv(camWidth, camHeight, &rgbaBuffer,
         (int)imgKernel->getWidth(), (int)imgKernel->getHeight(), &imgKernel->getImageDataVector(),
         outBuffer.data(), "out.exr" , params, false);

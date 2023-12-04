@@ -24,6 +24,7 @@ namespace OCIO = OCIO_NAMESPACE;
 #include "slg/film/film.h"
 #include "slg/film/imagepipeline/plugins/tonemaps/opencolorio.h"
 #include "slg/utils/filenameresolver.h"
+#include <boost/format.hpp>
 
 using namespace std;
 using namespace luxrays;
@@ -36,14 +37,23 @@ using namespace slg;
 BOOST_CLASS_EXPORT_IMPLEMENT(slg::OpenColorIOToneMap)
 
 OpenColorIOToneMap::OpenColorIOToneMap() {
+	cacheInitialized = false;
 }
 
 OpenColorIOToneMap::~OpenColorIOToneMap() {
+	cache.config = nullptr;
+	cache.cpu = nullptr;
+	cache.group = nullptr;
+	cache.processor = nullptr;
+	cache.transform = nullptr;
 }
 
 ToneMap *OpenColorIOToneMap::Copy() const {
 	OpenColorIOToneMap *ociotm = new OpenColorIOToneMap();
-	
+
+	ociotm->cache = cache;
+	ociotm->cacheInitialized = cacheInitialized;
+
 	ociotm->conversionType = conversionType;
 	
 	ociotm->configFileName = configFileName;
@@ -122,6 +132,7 @@ OpenColorIOToneMap *OpenColorIOToneMap::CreateLookConversion(const string &confi
 //------------------------------------------------------------------------------
 
 void OpenColorIOToneMap::Apply(Film &film, const u_int index) {
+	const double totalStartTime = WallClockTime();
 	Spectrum *pixels = (Spectrum *)film.channel_IMAGEPIPELINEs[index]->GetPixels();
 
 	try {
@@ -156,42 +167,93 @@ void OpenColorIOToneMap::Apply(Film &film, const u_int index) {
 				break;
 			}
 			case DISPLAY_CONVERSION: {
-				OCIO::ConstConfigRcPtr config = (configFileName == "") ?
-					OCIO::GetCurrentConfig() :
-					OCIO::Config::CreateFromFile(configFileName.c_str());
+				if (!cacheInitialized)
+				{
+					SLG_LOG("[OCIO] Initializing ");
+					cache.config = (configFileName == "") ?
+						OCIO::GetCurrentConfig() :
+						OCIO::Config::CreateFromFile(configFileName.c_str());
 
-				OCIO::GroupTransformRcPtr group = OCIO::GroupTransform::Create();
+					cache.group = OCIO::GroupTransform::Create();
 
-				const char *currentInputColorSpace = displayConversion.inputColorSpace.c_str();
-				if (displayConversion.lookName != "") {
-					const char *lookOutputColorSpace = OCIO::LookTransform::GetLooksResultColorSpace(config,
-						config->getCurrentContext(), displayConversion.lookName.c_str());
+					const char* currentInputColorSpace = displayConversion.inputColorSpace.c_str();
+					if (displayConversion.lookName != "") {
+						const char* lookOutputColorSpace = OCIO::LookTransform::GetLooksResultColorSpace(cache.config,
+							cache.config->getCurrentContext(), displayConversion.lookName.c_str());
 
-					if (lookOutputColorSpace && lookOutputColorSpace[0] != 0) {
-						OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
-						transform->setSrc(currentInputColorSpace);
-						transform->setDst(lookOutputColorSpace);
-						transform->setLooks(displayConversion.lookName.c_str());
-						group->appendTransform(transform);
-						
-						currentInputColorSpace = lookOutputColorSpace;
+						if (lookOutputColorSpace && lookOutputColorSpace[0] != 0) {
+							OCIO::LookTransformRcPtr transform = OCIO::LookTransform::Create();
+							transform->setSrc(currentInputColorSpace);
+							transform->setDst(lookOutputColorSpace);
+							transform->setLooks(displayConversion.lookName.c_str());
+							cache.group->appendTransform(transform);
+
+							currentInputColorSpace = lookOutputColorSpace;
+						}
 					}
+
+					cache.transform = OCIO::DisplayViewTransform::Create();
+					cache.transform->setSrc(currentInputColorSpace);
+					cache.transform->setDisplay(displayConversion.displayName.c_str());
+					cache.transform->setView(displayConversion.viewName.c_str());
+					cache.transform->setLooksBypass(displayConversion.lookName != "");
+					cache.group->appendTransform(cache.transform);
+
+					cache.processor = cache.config->getProcessor(cache.group);
+
+					cache.cpu = cache.processor->getDefaultCPUProcessor();
+					cacheInitialized = true;
+					SLG_LOG("[OCIO] Initializing end");
 				}
 
-				OCIO::DisplayViewTransformRcPtr transform = OCIO::DisplayViewTransform::Create();
-				transform->setSrc(currentInputColorSpace);
-				transform->setDisplay(displayConversion.displayName.c_str());
-				transform->setView(displayConversion.viewName.c_str());
-				transform->setLooksBypass(displayConversion.lookName != "");
-				group->appendTransform(transform);
+				if (film.GetWidth() == film.GetCameraWidth() || film.GetCameraWidth() == 0)
+				{
+					SLG_LOG("[OCIO] Applying ");
+					// Apply the color transform with OpenColorIO
+					OCIO::PackedImageDesc img(pixels, film.GetWidth(), film.GetHeight(), 3);
+					cache.cpu->apply(img);
+					SLG_LOG("[OCIO] Applying end ");
+				}
+				else
+				{
+					SLG_LOG("[OCIO] Applying reduced");
+					u_int _width = film.GetWidth();
+					u_int _height = film.GetHeight();
+					const u_int camWidth = film.GetCameraWidth();
+					const u_int camHeight = film.GetCameraHeight();
+
+					const u_int pixelCount = camWidth * camHeight;
+					vector<float> inBuffer(3 * pixelCount);
+
+					for (u_int x = 0; x < camWidth; x++)
+						for (u_int y = 0; y < camHeight; y++)
+						{
+							int dest = (x + y * camWidth) * 3;
+							int source = x + y * _width;
+							inBuffer[dest] = pixels[source].c[0];
+							inBuffer[dest + 1] = pixels[source].c[1];
+							inBuffer[dest + 2] = pixels[source].c[2];
+						}
+
+
+					// Apply the color transform with OpenColorIO
+					OCIO::PackedImageDesc img((float*)&inBuffer[0], camWidth, camHeight, 3);
+					cache.cpu->apply(img);
+
+					for (u_int x = 0; x < camWidth; x++)
+						for (u_int y = 0; y < camHeight; y++)
+						{
+							int dest = (x + y * camWidth) * 3;
+							int source = x + y * _width;
+
+							pixels[source].c[0] = inBuffer[dest];
+							pixels[source].c[1] = inBuffer[dest + 1];
+							pixels[source].c[2] = inBuffer[dest + 2];
+						}
+
+					SLG_LOG("[OCIO] Applying reduced end");
+				}
 				
-				OCIO::ConstProcessorRcPtr processor = config->getProcessor(group);
-
-				OCIO::ConstCPUProcessorRcPtr cpu = processor->getDefaultCPUProcessor();
-
-				// Apply the color transform with OpenColorIO
-				OCIO::PackedImageDesc img(pixels, film.GetWidth(), film.GetHeight(), 3);
-				cpu->apply(img);
 				break;
 			}
 			case LOOK_CONVERSION: {
@@ -224,4 +286,6 @@ void OpenColorIOToneMap::Apply(Film &film, const u_int index) {
 	} catch (OCIO::Exception &exception) {
 		throw runtime_error("OpenColorIO Error in OpenColorIOToneMap::Apply(): " + string(exception.what()));
 	}
+	
+	SLG_LOG("[OCIO] single execution took a total of " << (boost::format("%.3f") % (WallClockTime() - totalStartTime)) << "secs");
 }
