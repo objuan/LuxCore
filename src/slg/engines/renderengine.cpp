@@ -24,7 +24,7 @@
 #include "slg/engines/renderengine.h"
 #include "slg/engines/renderengineregistry.h"
 #include "slg/engines/rtpathcpu/rtpathcpu.h"
-#include "slg/engines/bidircpubgl/bidircpubgl.h"
+//#include "slg/engines/bidircpubgl/bidircpubgl.h"
 #include "slg/engines/rtpathocl/rtpathocl.h"
 #include "slg/engines/filesaver/filesaver.h"
 #include "slg/bsdf/bsdf.h"
@@ -35,7 +35,7 @@
 #include "slg/samplers/random.h"
 #include "slg/samplers/sobol.h"
 #include "slg/samplers/metropolis.h"
-#include "slg/samplers/metropolis_fast.h"
+//#include "slg/samplers/metropolis_fast.h"
 #include "slg/samplers/tilepathsampler.h"
 
 #include "luxrays/core/intersectiondevice.h"
@@ -232,7 +232,7 @@ void RenderEngine::CheckSamplersForNoTile(const string &engineName, const Proper
 	const string samplerType = cfg.Get(Property("sampler.type")(SobolSampler::GetObjectTag())).Get<string>();
 	if ((samplerType != RandomSampler::GetObjectTag()) &&
 			(samplerType != SobolSampler::GetObjectTag()) &&
-			(samplerType != MetropolisFastSampler::GetObjectTag()) &&
+			//(samplerType != MetropolisFastSampler::GetObjectTag()) &&
 			(samplerType != MetropolisSampler::GetObjectTag()))
 		throw runtime_error(engineName + " render engine can use only " +
 				RandomSampler::GetObjectTag() + ", " +
@@ -324,7 +324,7 @@ OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, PathOCLRenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, LightCPURenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, PathCPURenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, BiDirCPURenderEngine);
-OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, BiDirCPUBGLRenderEngine);
+//OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, BiDirCPUBGLRenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, BiDirVMCPURenderEngine);
 OBJECTSTATICREGISTRY_REGISTER(RenderEngineRegistry, FileSaverRenderEngine);
 

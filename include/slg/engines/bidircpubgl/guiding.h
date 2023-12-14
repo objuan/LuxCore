@@ -16,7 +16,7 @@ using namespace slg;
  void *sample_data_storage
 
 */
-// UNO PER THREAD
+// GLOBALE
 typedef class PathGuidingGlobalData
 {
 public:
@@ -156,7 +156,7 @@ public:
 		//InitializeKernel();
 		kg = new KernelGlobalsCPU(global);
 
-		enabled = true;
+		enabled = false;
 
 		state = new IntegratorState();
 

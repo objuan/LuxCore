@@ -162,10 +162,18 @@ public:
 	// Option flags
 	bool forceBlackBackground, hybridBackForwardEnable;
 
+	void GenerateEyeRay(const Camera* camera, const Film* film,
+		const float filmX, const float filmY,
+		luxrays::Ray& eyeRay, PathVolumeInfo& volInfo,
+		Sampler* sampler, SampleResult& sampleResult) const;
+
+	void GenerateEyeRay(const Camera* camera, const Film* film,
+		luxrays::Ray& eyeRay, PathVolumeInfo& volInfo,
+		Sampler* sampler, SampleResult& sampleResult) const;
+
+
 private:
-	void GenerateEyeRay(const Camera *camera, const Film *film,
-			luxrays::Ray &eyeRay, PathVolumeInfo &volInfo,
-			Sampler *sampler, SampleResult &sampleResult) const;
+	
 
 	bool SampleBSDF(BSDF* bsdf, luxrays::Vector* sampledDir,
 		const float u0, const float u1, luxrays::Spectrum* result,

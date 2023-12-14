@@ -1,5 +1,7 @@
 BLENDER
 
+ //  log_file = new std::ofstream("C:\\Lavoro\\luxcorerender\\cycles\\build\\bin\\Debug\\log_file.txt", std::ios_base::out );
+    if (log_file != NULL) (*log_file) << "==  guiding_prepare_structures TRAIN  \n";
 
 run_main_render_loop()
 	run_update_for_next_iteration

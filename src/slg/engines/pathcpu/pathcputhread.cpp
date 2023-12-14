@@ -51,8 +51,7 @@ PathCPURenderThread::PathCPURenderThread(PathCPURenderEngine *engine,
 void PathCPURenderThread::RenderFunc() {
 	//SLG_LOG("[PathCPURenderEngine::" << threadIndex << "] Rendering thread started");
 
-	
-	//--------------------------------------------------------------------------
+		//--------------------------------------------------------------------------
 	// Initialization
 	//--------------------------------------------------------------------------
 
@@ -101,6 +100,7 @@ void PathCPURenderThread::RenderFunc() {
 	pathGuiding->enabled = guiding_blend_factor > 0.1f;
 
 	SLG_LOG("PathCPURenderThread: guiding_blend_factor" << pathGuiding->kg->data.surface_guiding_probability);
+	
 	// ==============
 	if (pathTracer.hybridBackForwardEnable) {
 		// Light path sampler is always Metropolis
@@ -132,7 +132,79 @@ void PathCPURenderThread::RenderFunc() {
 	// Trace paths
 	//--------------------------------------------------------------------------
 
-	for (u_int steps = 0; !boost::this_thread::interruption_requested(); ++steps) {
+	//--------------------------------------------------------------------------
+	// prima fase, versione ridotta
+	//--------------------------------------------------------------------------
+
+	int w = engine->film->GetWidth();
+	int h = engine->film->GetHeight();
+	int numSamplePerPixel = 4;
+
+	std::vector<SampleResult>& sampleResults = pathTracerThreadState.eyeSampleResults;
+	PathTracerThreadState& state = pathTracerThreadState;
+
+	if (false)
+	{
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				for (int i = 0; i < numSamplePerPixel; i++)
+				{
+					EyePathInfo pathInfo;
+
+					Ray eyeRay;
+
+					const float filmX = eyeSampler->GetSample(0);
+					const float filmY = eyeSampler->GetSample(1);
+					float pixelX_off = filmX - Floor2UInt(filmX);
+					float pixelY_off = filmY - Floor2UInt(filmY);
+
+
+					float xx = float(x) + pixelX_off;// / w;
+					float yy = float(y) + pixelY_off;// / h;
+
+				//	xx = filmX;
+				//	yy = filmY;
+
+					pathTracerThreadState.eyeSampleCount += 1.0;
+
+					pathTracer.ResetEyeSampleResults(sampleResults);
+
+					pathTracer.GenerateEyeRay(scene->camera, engine->film, xx, yy,
+						eyeRay, pathInfo.volume, eyeSampler, sampleResults[0]);
+
+					//pathTracer.RenderEyeSample(state.device, state.scene, state.film, state.eyeSampler, state.eyeSampleResults, state.pathGuiding);
+
+				//	pathTracer.GenerateEyeRay(scene->camera, engine->film, eyeRay, pathInfo.volume, eyeSampler, sampleResults[0]);
+
+					pathTracer.RenderEyePath(device, scene, eyeSampler,
+						pathInfo, eyeRay, Spectrum(1.f), sampleResults, pathGuiding);
+
+					// Variance clamping
+					pathTracer.ApplyVarianceClamp(pathTracerThreadState, sampleResults);
+
+					eyeSampler->NextSample(sampleResults);
+
+				}
+				//pathTracer.RenderEyeSample(pathTracerThreadState.device, 
+				//	pathTracerThreadState.scene, 
+				//	pathTracerThreadState.film, 
+				//	pathTracerThreadState.eyeSampler, 
+				//	state.eyeSampleResults, state.pathGuiding);*/*/
+			}
+		}
+
+	}
+	//--------------------------------------------------------------------------
+	// seconda fase  sampling
+	//--------------------------------------------------------------------------
+
+	// prima fase resolution_divider = 8, 
+	// return min(max(1, resolution_divider / pixel_size_), 4);
+	int pathStorageCount = engine->film->GetWidth() * engine->film->GetHeight() ;
+
+	for (u_int steps = 0; !boost::this_thread::interruption_requested() && true; ++steps) {
 		// Check if we are in pause mode
 		if (engine->pauseMode) {
 			// Check every 100ms if I have to continue the rendering
@@ -180,7 +252,7 @@ void PathCPURenderThread::RenderFunc() {
 			const size_t num_valid_samples = pathGuiding->kg->opgl_sample_data_storage->GetSizeSurface() +
 				pathGuiding->kg->opgl_sample_data_storage->GetSizeVolume();
 			//if (num_valid_samples >= 1024)
-			if (num_valid_samples >= 10000 )
+			if (num_valid_samples >= pathStorageCount)
 			{
 				std::lock_guard<std::mutex> lock(engine->g_mutex);
 				pathGuiding->kg->opgl_guiding_field->Update(*pathGuiding->kg->opgl_sample_data_storage);

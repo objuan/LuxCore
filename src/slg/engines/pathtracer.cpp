@@ -382,6 +382,37 @@ void PathTracer::GenerateEyeRay(const Camera *camera, const Film *film, Ray &eye
 		sampler->GetSample(2), sampler->GetSample(3));
 }
 
+void PathTracer::GenerateEyeRay(const Camera* camera, const Film* film, 
+	const float filmX , const float filmY,Ray& eyeRay,
+	PathVolumeInfo& volInfo, Sampler* sampler, SampleResult& sampleResult) const {
+	
+	// Use fast pixel filtering, like the one used in TILEPATH.
+
+	const u_int* subRegion = film->GetSubRegion();
+	sampleResult.pixelX = Min(Floor2UInt(filmX), subRegion[1]);
+	sampleResult.pixelY = Min(Floor2UInt(filmY), subRegion[3]);
+	assert(sampleResult.pixelX >= subRegion[0]);
+	assert(sampleResult.pixelX <= subRegion[1]);
+	assert(sampleResult.pixelY >= subRegion[2]);
+	assert(sampleResult.pixelY <= subRegion[3]);
+
+	const float uSubPixelX = filmX - sampleResult.pixelX;
+	const float uSubPixelY = filmY - sampleResult.pixelY;
+
+	// Sample according the pixel filter distribution
+	float distX, distY;
+	pixelFilterDistribution->SampleContinuous(uSubPixelX, uSubPixelY, &distX, &distY);
+
+	sampleResult.filmX = sampleResult.pixelX + .5f + distX;
+	sampleResult.filmY = sampleResult.pixelY + .5f + distY;
+
+	const float timeSample = sampler->GetSample(4);
+	const float time = camera->GenerateRayTime(timeSample);
+
+	camera->GenerateRay(time, sampleResult.filmX, sampleResult.filmY, &eyeRay, &volInfo,
+		sampler->GetSample(2), sampler->GetSample(3));
+}
+
 //------------------------------------------------------------------------------
 // RenderEyePath methods
 //------------------------------------------------------------------------------

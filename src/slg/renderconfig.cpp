@@ -43,7 +43,7 @@
 #include "slg/engines/lightcpu/lightcpu.h"
 #include "slg/engines/pathcpu/pathcpu.h"
 #include "slg/engines/bidircpu/bidircpu.h"
-#include "slg/engines/bidircpubgl/bidircpubgl.h"
+//#include "slg/engines/bidircpubgl/bidircpubgl.h"
 #include "slg/engines/bidirvmcpu/bidirvmcpu.h"
 #include "slg/engines/filesaver/filesaver.h"
 #include "slg/engines/tilepathcpu/tilepathcpu.h"
