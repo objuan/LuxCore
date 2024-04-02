@@ -55,12 +55,14 @@ namespace slg {
 	{
 		int id;
 		slg::Scene* scene;
-		luxrays::Properties props;
+		//luxrays::Properties props;
+		std::string props;
 
 	public:
 		std::string txtName;
 
-		TextureLoadingTask(int id, slg::Scene* scene,  const luxrays::Properties& props, const std::string& txtName) :id(id), scene(scene), props(props), txtName(txtName) {
+		TextureLoadingTask(int id, slg::Scene* scene,  const luxrays::Properties& props, const std::string& txtName) :id(id), scene(scene), txtName(txtName) {
+			this->props = props.ToString();
 		}
 
 		void load(int threadId);

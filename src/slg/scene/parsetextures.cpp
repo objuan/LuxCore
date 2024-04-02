@@ -150,7 +150,11 @@ void Scene::LoadTexture(const Properties& props, const std::string& texName, int
 
 void TextureLoadingTask::load(int threadId)
 {
-	scene->LoadTexture(props, txtName, threadId);
+	Properties p;
+	p.SetFromString(this->props);
+	
+	//SDL_LOG("[TH" << threadId << "] Texture task loading. Properties from string: " << p.ToString());
+	scene->LoadTexture( p, txtName, threadId);
 }
 
 
@@ -218,10 +222,10 @@ TextureLoadingThread::~TextureLoadingThread()
 }
 
 void TextureLoadingThread::push(const luxrays::Properties& props, const std::string& txtName) {
-	luxrays::Properties p;
-	p.Set(props);
 	mtx_.lock();
-	taskList.push_back(new TextureLoadingTask(0, scene, p, txtName));
+	//luxrays::Properties p;
+//	p.Set(props);
+	taskList.push_back(new TextureLoadingTask(0, scene, props, txtName));
 	waitingCount++;
 	SDL_LOG("Push txt to load: " << txtName << " count: " << waitingCount);
 	mtx_.unlock();
