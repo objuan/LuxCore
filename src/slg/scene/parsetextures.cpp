@@ -170,7 +170,7 @@ void TextureLoadingThread::lockTexturePath(const std::string &txtPath, int threa
 		{
 			txtPathsMutex.unlock();
 			SDL_LOG("waiting for other thread to load texture: " << txtPath);
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
 		}
 		else
 		{
@@ -251,8 +251,17 @@ void TextureLoadingThread::run(int threadId)
 		mtx_.lock();
 		if (taskList.size() > 0)
 		{
-			task = taskList[taskList.size() - 1];
-			taskList.pop_back();
+			if (taskList.size() == 1)
+			{
+				task = taskList[taskList.size() - 1];
+				taskList.pop_back();
+			}
+			else
+			{
+				int idx = std::rand() % taskList.size();
+				task = taskList[idx];
+				taskList.erase(taskList.begin() + idx);
+			}
 		}
 		mtx_.unlock();
 		if (task != NULL)
