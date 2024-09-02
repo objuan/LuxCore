@@ -150,7 +150,11 @@ void Scene::LoadTexture(const Properties& props, const std::string& texName, int
 
 void TextureLoadingTask::load(int threadId)
 {
-	scene->LoadTexture(props, txtName, threadId);
+	Properties p;
+	p.SetFromString(this->props);
+	
+	//SDL_LOG("[TH" << threadId << "] Texture task loading. Properties from string: " << p.ToString());
+	scene->LoadTexture( p, txtName, threadId);
 }
 
 
@@ -170,7 +174,7 @@ void TextureLoadingThread::lockTexturePath(const std::string &txtPath, int threa
 		{
 			txtPathsMutex.unlock();
 			SDL_LOG("waiting for other thread to load texture: " << txtPath);
-			boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
+			boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
 		}
 		else
 		{
@@ -218,10 +222,10 @@ TextureLoadingThread::~TextureLoadingThread()
 }
 
 void TextureLoadingThread::push(const luxrays::Properties& props, const std::string& txtName) {
-	luxrays::Properties p;
-	p.Set(props);
 	mtx_.lock();
-	taskList.push_back(new TextureLoadingTask(0, scene, p, txtName));
+	//luxrays::Properties p;
+//	p.Set(props);
+	taskList.push_back(new TextureLoadingTask(0, scene, props, txtName));
 	waitingCount++;
 	SDL_LOG("Push txt to load: " << txtName << " count: " << waitingCount);
 	mtx_.unlock();
@@ -251,8 +255,17 @@ void TextureLoadingThread::run(int threadId)
 		mtx_.lock();
 		if (taskList.size() > 0)
 		{
-			task = taskList[taskList.size() - 1];
-			taskList.pop_back();
+			if (taskList.size() == 1)
+			{
+				task = taskList[taskList.size() - 1];
+				taskList.pop_back();
+			}
+			else
+			{
+				int idx = std::rand() % taskList.size();
+				task = taskList[idx];
+				taskList.erase(taskList.begin() + idx);
+			}
 		}
 		mtx_.unlock();
 		if (task != NULL)
