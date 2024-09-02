@@ -44,6 +44,9 @@ void InfiniteLight::Preprocess() {
 
 	const ImageMapStorage *imageMapStorage = imageMap->GetStorage();
 
+	this->gain = Spectrum(contrast);
+	this->adder = Spectrum(abs(brightness));
+
 	vector<float> data(imageMap->GetWidth() * imageMap->GetHeight());
 	//float maxVal = -INFINITY;
 	//float minVal = INFINITY;
@@ -118,7 +121,10 @@ Spectrum InfiniteLight::GetRadiance(const Scene &scene,
 		*emissionPdfW = distPdf * latLongMappingPdf / (M_PI * envRadius * envRadius);
 	}
 
-	return temperatureScale * gain * imageMap->GetSpectrum(UV(u, v));
+	Spectrum result =  temperatureScale * gain * imageMap->GetSpectrum(UV(u, v)) ;
+	if (brightness > 0) result = result + adder;
+	//else if (brightness < 0) result = result - adder;
+	return result;
 }
 
 Spectrum InfiniteLight::Emit(const Scene &scene,
@@ -161,7 +167,10 @@ Spectrum InfiniteLight::Emit(const Scene &scene,
 	if (cosThetaAtLight)
 		*cosThetaAtLight = Dot(Normalize(worldCenter - rayOrig), rayDir);
 
-	const Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(uv);
+	Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(uv);
+	if (brightness > 0) result = result + adder;
+	//else if (brightness < 0) result = result - adder;
+
 	assert (!result.IsNaN() && !result.IsInf() && !result.IsNeg());
 
 	ray.Update(rayOrig, rayDir, time);
@@ -215,8 +224,11 @@ Spectrum InfiniteLight::Illuminate(const Scene &scene, const BSDF &bsdf,
 	if (emissionPdfW)
 		*emissionPdfW = distPdf * latLongMappingPdf / (M_PI * envRadius * envRadius);
 
-	const Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(UV(uv[0], uv[1]));
-	assert (!result.IsNaN() && !result.IsInf() && !result.IsNeg());
+	 Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(UV(uv[0], uv[1])) ;
+	 if (brightness > 0) result = result + adder;
+	// else if (brightness < 0) result = result - adder;
+	 
+	 assert (!result.IsNaN() && !result.IsInf() && !result.IsNeg());
 
 	shadowRay = Ray(shadowRayOrig, shadowRayDir, 0.f, shadowRayDistance, time);
 
@@ -248,6 +260,8 @@ Properties InfiniteLight::ToProperties(const ImageMapCache &imgMapCache, const b
 	Properties props = EnvLightSource::ToProperties(imgMapCache, useRealFileName);
 
 	props.Set(Property(prefix + ".type")("infinite"));
+	props.Set(Property(prefix + ".contrast")(1.f));
+	props.Set(Property(prefix + ".brightness")(1.f));
 	const string fileName = useRealFileName ?
 		imageMap->GetName() : imgMapCache.GetSequenceFileName(imageMap);
 	props.Set(Property(prefix + ".file")(fileName));

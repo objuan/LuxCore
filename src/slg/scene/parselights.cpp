@@ -281,10 +281,13 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 
 		const ImageMap *imgMap = imgMapCache.GetImageMap(imageName, ImageMapConfig(props, propName), false);
 
+
 		InfiniteLight *il = new InfiniteLight();
 		il->lightToWorld = light2World;
 		il->imageMap = imgMap;
 		il->sampleUpperHemisphereOnly = props.Get(Property(propName + ".sampleupperhemisphereonly")(false)).Get<bool>();
+		il->contrast = Max(0.f, props.Get(Property(propName + ".contrast")(1.f)).Get<float>());
+		il->brightness = Max(-10.f, props.Get(Property(propName + ".brightness")(0.f)).Get<float>());
 
 		il->SetIndirectDiffuseVisibility(props.Get(Property(propName + ".visibility.indirect.diffuse.enable")(true)).Get<bool>());
 		il->SetIndirectGlossyVisibility(props.Get(Property(propName + ".visibility.indirect.glossy.enable")(true)).Get<bool>());

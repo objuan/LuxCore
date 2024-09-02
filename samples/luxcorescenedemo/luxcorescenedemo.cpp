@@ -341,19 +341,19 @@ int main(int argc, char *argv[]) {
 		// Create the light
 		CreateBox(scene, "box03", "mesh-box03", "whitelight", false, false, BBox(Point(-1.75f, 1.5f, .75f), Point(-1.5f, 1.75f, .5f)));
 		// Create a monkey from ply-file
-		Properties props;
-		props.SetFromString(
-			"scene.shapes.monkey.type = mesh\n"
-			"scene.shapes.monkey.ply = samples/luxcorescenedemo/suzanne.ply\n"	// load the ply-file
-			"scene.objects.monkey.shape = monkey\n"		// set shape
-			"scene.objects.monkey.material = mat_gold\n"		// set material
-			"scene.objects.monkey.transformation = \
-						0.4 0.0 0.0 0.0 \
-						0.0 0.4 0.0 0.0 \
-						0.0 0.0 0.4 0.0 \
-					    0.0 2.0 0.3 1.0\n"						//scale and translate
-			);
-		scene->Parse(props);
+		//Properties props;
+		//props.SetFromString(
+		//	"scene.shapes.monkey.type = mesh\n"
+		//	"scene.shapes.monkey.ply = samples/luxcorescenedemo/suzanne.ply\n"	// load the ply-file
+		//	"scene.objects.monkey.shape = monkey\n"		// set shape
+		//	"scene.objects.monkey.material = mat_gold\n"		// set material
+		//	"scene.objects.monkey.transformation = \
+		//				0.4 0.0 0.0 0.0 \
+		//				0.0 0.4 0.0 0.0 \
+		//				0.0 0.0 0.4 0.0 \
+		//			    0.0 2.0 0.3 1.0\n"						//scale and translate
+		//	);
+		//scene->Parse(props);
 
 		// Create a SkyLight & SunLight
 		scene->Parse(
@@ -367,14 +367,57 @@ int main(int argc, char *argv[]) {
 				Property("scene.lights.sunl.gain")(0.8f, 0.8f, 0.8f)
 				);
 
+		// =============================
+		float matt[16] = {
+			   .5f, 0.f, 0.f, 0.f,
+			   0.f, .5f, 0.f, 0.f,
+			   0.f, 0.f, .5f, 0.f,
+			   0,0,0, 1.f
+		};
+		LC_LOG("BEGIN1");
+
+		int ii = 0;
+		int c = 0;
+		int N = 100;
+		float x = 0;
+		float* transMat = new float[16* 1000000];
+		for (; ii < N; ii++)
+		{
+			matt[12] = x;
+			x += 0.1f;
+			for (int j = 0; j < 16; j++)
+				transMat[c++] = matt[j];
+		}
+		LC_LOG("..1");
+		scene->DuplicateObject("box01","mesh-box01-instance", N,transMat);
+
+		LC_LOG("Begin 2");
+
+		N = 1000;
+		x = 0;
+		ii = 0; c = 0;
+		for (; ii < N; ii++)
+		{
+			matt[12] = x;
+			x += 0.1f;
+			for (int j = 0; j < 16; j++)
+				transMat[c++] = matt[j];
+		}
+		LC_LOG(".. 2");
+		scene->DuplicateObject("box02", "mesh-box01-instance", N, transMat);
+		LC_LOG("Done 2");
+
 		//----------------------------------------------------------------------
 		// Do the render
 		//----------------------------------------------------------------------
 
 		RenderConfig *config = RenderConfig::Create(
-				Property("renderengine.type")("PATHCPU") <<
-				Property("sampler.type")("SOBOL") <<
-				Property("batch.halttime")(10.f) <<
+				//Property("renderengine.type")("PATHCPU") <<
+				Property("renderengine.type")("BIDIRCPU") <<
+				Property("sampler.type")("METROPOLIS") <<
+				Property("batch.halttime")(1.f) <<
+				Property("path.maxdepth")(10.f) <<
+				Property("path.maxdepth")(10.f) <<
 				Property("film.outputs.1.type")("RGB_IMAGEPIPELINE") <<
 				Property("film.outputs.1.filename")("image.png"),
 				scene);
@@ -385,6 +428,24 @@ int main(int argc, char *argv[]) {
 		//----------------------------------------------------------------------
 
 		session->Start();
+
+	/*	session->BeginSceneEdit();
+		LC_LOG("Begin 3");
+
+		N = 20000;
+		x = 0;
+		ii = 0; c = 0;
+		for (; ii < N; ii++)
+		{
+			matt[12] = x;
+			x += 0.1f;
+			for (int j = 0; j < 16; j++)
+				transMat[c++] = matt[j];
+		}
+		LC_LOG(".. 3");
+		scene->DuplicateObject("box01", "mesh-box01-instance", N, transMat);
+		LC_LOG("Done 3");
+		session->EndSceneEdit();
 
 		DoRendering(session);
 		boost::filesystem::rename("image.png", "image0.png");
@@ -438,10 +499,10 @@ int main(int argc, char *argv[]) {
 			0.f, 0.f, .4f, 0.f,
 			1.f, 2.f, .3f, 1.f
 		};
-		scene->UpdateObjectTransformation("monkey", mat);
+		//scene->UpdateObjectTransformation("monkey", mat);
 
 		session->EndSceneEdit();
-
+		*/
 		// And redo the rendering
 		DoRendering(session);
 		boost::filesystem::rename("image.png", "image3.png");
@@ -450,56 +511,56 @@ int main(int argc, char *argv[]) {
 		// Add a strands object
 		//----------------------------------------------------------------------
 
-		LC_LOG("Adding a strands object...");
-		session->BeginSceneEdit();
+		//LC_LOG("Adding a strands object...");
+		//session->BeginSceneEdit();
 
-		{
-			const string fileName = "scenes/strands/straight.hair";
-			luxrays::cyHairFile strandsFile;
-			const int strandsCount = strandsFile.LoadFromFile(fileName.c_str());
-			if (strandsCount <= 0)
-				throw runtime_error("Unable to read strands file: " + fileName);
-			scene->DefineStrands("hairs_shape", strandsFile, Scene::TESSEL_RIBBON,
-					0, 0.f, 0, false, false, true);
+		//{
+		//	const string fileName = "scenes/strands/straight.hair";
+		//	luxrays::cyHairFile strandsFile;
+		//	const int strandsCount = strandsFile.LoadFromFile(fileName.c_str());
+		//	if (strandsCount <= 0)
+		//		throw runtime_error("Unable to read strands file: " + fileName);
+		//	scene->DefineStrands("hairs_shape", strandsFile, Scene::TESSEL_RIBBON,
+		//			0, 0.f, 0, false, false, true);
 
-			// Add the object to the scene
-			Properties props;
-			props.SetFromString(
-				"scene.objects.hairs_obj.shape = hairs_shape\n"
-				"scene.objects.hairs_obj.material = mat_white\n"
-				"scene.objects.hairs_obj.transformation = 0.01 0.0 0.0 0.0  0.0 0.01 0.0 0.0  0.0 0.0 0.01 0.0  -1.5 0.0 0.3 1.0\n"
-				);
-			scene->Parse(props);
-		}
+		//	// Add the object to the scene
+		//	Properties props;
+		//	props.SetFromString(
+		//		"scene.objects.hairs_obj.shape = hairs_shape\n"
+		//		"scene.objects.hairs_obj.material = mat_white\n"
+		//		"scene.objects.hairs_obj.transformation = 0.01 0.0 0.0 0.0  0.0 0.01 0.0 0.0  0.0 0.0 0.01 0.0  -1.5 0.0 0.3 1.0\n"
+		//		);
+		//	scene->Parse(props);
+		//}
 
-		session->EndSceneEdit();
+		//session->EndSceneEdit();
 			
 
 		// And redo the rendering
-		DoRendering(session);
-		boost::filesystem::rename("image.png", "image4.png");
+		/*DoRendering(session);
+		boost::filesystem::rename("image.png", "image4.png");*/
 
 		//----------------------------------------------------------------------
 		// Add a box with multiple UV sets
 		//----------------------------------------------------------------------
 
-		LC_LOG("Adding multi-UV object...");
-		session->BeginSceneEdit();
-		
-		scene->Parse(
-			Property("scene.textures.map.type")("imagemap") <<
-			Property("scene.textures.map.file")("check_texmap") <<
-			Property("scene.textures.map.gamma")(1.f) <<
-			Property("scene.textures.map.mapping.uvindex")(1) <<
-			Property("scene.materials.mat_ground.type")("matte") <<
-			Property("scene.materials.mat_ground.kd")("map"));
-		CreateBox(scene, "ground", "mesh-ground", "mat_ground", true, true, BBox(Point(-3.f, -3.f, -.1f), Point(3.f, 3.f, 0.f)));
+		//LC_LOG("Adding multi-UV object...");
+		//session->BeginSceneEdit();
+		//
+		//scene->Parse(
+		//	Property("scene.textures.map.type")("imagemap") <<
+		//	Property("scene.textures.map.file")("check_texmap") <<
+		//	Property("scene.textures.map.gamma")(1.f) <<
+		//	Property("scene.textures.map.mapping.uvindex")(1) <<
+		//	Property("scene.materials.mat_ground.type")("matte") <<
+		//	Property("scene.materials.mat_ground.kd")("map"));
+		//CreateBox(scene, "ground", "mesh-ground", "mat_ground", true, true, BBox(Point(-3.f, -3.f, -.1f), Point(3.f, 3.f, 0.f)));
 
-		session->EndSceneEdit();
+		//session->EndSceneEdit();
 
-		// And redo the rendering
-		DoRendering(session);
-		boost::filesystem::rename("image.png", "image5.png");
+		//// And redo the rendering
+		//DoRendering(session);
+		//boost::filesystem::rename("image.png", "image5.png");
 
 		//----------------------------------------------------------------------
 

@@ -66,6 +66,9 @@ public:
 
 	const ImageMap *imageMap;
 	bool sampleUpperHemisphereOnly;
+	float contrast;
+	float brightness;
+	luxrays::Spectrum adder;
 
 	// Visibility map cache options
 	ELVCParams visibilityMapCacheParams;
