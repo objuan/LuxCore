@@ -279,15 +279,20 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 
 		const string imageName = props.Get(Property(propName + ".file")("image.png")).Get<string>();
 
-		const ImageMap *imgMap = imgMapCache.GetImageMap(imageName, ImageMapConfig(props, propName), false);
+		ImageMap *imgMap = imgMapCache.GetImageMap(imageName, ImageMapConfig(props, propName), false);
 
 
 		InfiniteLight *il = new InfiniteLight();
 		il->lightToWorld = light2World;
 		il->imageMap = imgMap;
 		il->sampleUpperHemisphereOnly = props.Get(Property(propName + ".sampleupperhemisphereonly")(false)).Get<bool>();
-		il->contrast = Max(0.f, props.Get(Property(propName + ".contrast")(1.f)).Get<float>());
-		il->brightness = Max(-10.f, props.Get(Property(propName + ".brightness")(0.f)).Get<float>());
+		//il->contrast = Max(0.f, props.Get(Property(propName + ".contrast")(1.f)).Get<float>());
+		//il->brightness = Max(-10.f, props.Get(Property(propName + ".brightness")(0.f)).Get<float>());
+		il->inBlack = Max(-0.f, props.Get(Property(propName + ".inlevel.black")(0.f)).Get<float>());
+		il->inWhite = Max(-0.f, props.Get(Property(propName + ".inlevel.white")(100.f)).Get<float>());
+		il->inGamma = Max(-0.f, props.Get(Property(propName + ".inlevel.gamma")(1.f)).Get<float>());
+		il->outBlack = Max(-0.f, props.Get(Property(propName + ".outlevel.black")(0.f)).Get<float>());
+		il->outWhite = Max(-0.f, props.Get(Property(propName + ".outlevel.white")(100.f)).Get<float>());
 
 		il->SetIndirectDiffuseVisibility(props.Get(Property(propName + ".visibility.indirect.diffuse.enable")(true)).Get<bool>());
 		il->SetIndirectGlossyVisibility(props.Get(Property(propName + ".visibility.indirect.glossy.enable")(true)).Get<bool>());

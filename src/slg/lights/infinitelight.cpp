@@ -25,7 +25,8 @@
 using namespace std;
 using namespace luxrays;
 using namespace slg;
-		
+
+
 //------------------------------------------------------------------------------
 // InfiniteLight
 //------------------------------------------------------------------------------
@@ -39,14 +40,33 @@ InfiniteLight::~InfiniteLight() {
 	delete visibilityMapCache;
 }
 
+float GetLum(Spectrum& color) {
+	return 0.212671f * color.c[0] + 0.715160f * color.c[1] + 0.072169f * color.c[2];
+	//return 0.11f * color.c[0] + 0.59f * color.c[1] + 0.3f * color.c[2]; //GRAY
+}
+
+void AddLum(Spectrum& color,float factor) {
+	color.c[0] = max(0.f,color.c[0] + (factor ));
+	color.c[1] = max(0.f, color.c[1] + (factor ));
+	color.c[2] = max(0.f, color.c[2] + (factor ));
+
+	/*color.c[0] = color.c[0] + (factor * 0.11f);
+	color.c[1] = color.c[1] + (factor * 0.59f);
+	color.c[2] = color.c[2] + (factor * 0.3f);*/
+}
+
 void InfiniteLight::Preprocess() {
 	EnvLightSource::Preprocess();
 
-	const ImageMapStorage *imageMapStorage = imageMap->GetStorage();
+	ImageMapStorage *imageMapStorage = imageMap->GetStorage();
 
-	this->gain = Spectrum(contrast);
-	this->adder = Spectrum(abs(brightness));
+//	this->gain = Spectrum(contrast);
+//	this->adder = Spectrum(abs(brightness));
 
+	
+	float lum;
+	float min_lum = 999999;
+	float max_lum = -9999999;
 	vector<float> data(imageMap->GetWidth() * imageMap->GetHeight());
 	//float maxVal = -INFINITY;
 	//float minVal = INFINITY;
@@ -62,11 +82,57 @@ void InfiniteLight::Preprocess() {
 			if (!IsValid(data[index]))
 				throw runtime_error("Pixel (" + ToString(x) + ", " + ToString(y) + ") in infinite light has an invalid value: " + ToString(data[index]));
 
+			lum = imageMapStorage->GetSpectrum(index).Y();
+
+			min_lum = min(min_lum, lum);
+			max_lum = max(max_lum, lum);
 			//maxVal = Max(data[index], maxVal);
 			//minVal = Min(data[index], minVal);
 		}
 	}
 	
+	//this->adjImageMap = new luxrays::Spectrum[imageMap->GetWidth() * imageMap->GetHeight()];
+
+	float lumAll = max_lum - min_lum;
+	float cutMin = (inBlack/100.f); // 0-1
+	float cutMax = (inWhite / 100.f);  // 0-1
+	float cutSize = cutMax - cutMin;
+
+	float outMin = (outBlack / 100.f); // 0-1
+	float outMax = (outWhite / 100.f);  // 0-1
+	float outSize = outMax - outMin;
+
+	float lum_in,lum_out;
+
+	for (u_int y = 0; y < imageMap->GetHeight(); ++y) {
+		for (u_int x = 0; x < imageMap->GetWidth(); ++x) {
+			const u_int index = x + y * imageMap->GetWidth();
+
+			// luminosity
+			Spectrum sp = imageMapStorage->GetSpectrum(index);
+
+			//lum = sp.Y();
+			lum = GetLum(sp);
+
+			if (lum <= 1)
+			{
+				// scale
+
+				lum_in = pow(min(99999.f, max(0.f, (lum - cutMin) / cutSize)), inGamma);
+				float scale = lum_in / lum;
+				sp = sp * scale;
+
+				//// linear on output
+
+				lum_out = outMin + (lum_in)*outSize;
+
+				AddLum(sp, lum_out - lum_in);
+
+				imageMapStorage->SetSpectrum(index, sp);
+			}
+		}
+	}
+
 	//SLG_LOG("InfiniteLight luminance  Max=" << maxVal << " Min=" << minVal);
 
 	imageMapDistribution = new Distribution2D(&data[0], imageMap->GetWidth(), imageMap->GetHeight());
@@ -122,7 +188,7 @@ Spectrum InfiniteLight::GetRadiance(const Scene &scene,
 	}
 
 	Spectrum result =  temperatureScale * gain * imageMap->GetSpectrum(UV(u, v)) ;
-	if (brightness > 0) result = result + adder;
+	
 	//else if (brightness < 0) result = result - adder;
 	return result;
 }
@@ -168,7 +234,7 @@ Spectrum InfiniteLight::Emit(const Scene &scene,
 		*cosThetaAtLight = Dot(Normalize(worldCenter - rayOrig), rayDir);
 
 	Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(uv);
-	if (brightness > 0) result = result + adder;
+	
 	//else if (brightness < 0) result = result - adder;
 
 	assert (!result.IsNaN() && !result.IsInf() && !result.IsNeg());
@@ -225,7 +291,7 @@ Spectrum InfiniteLight::Illuminate(const Scene &scene, const BSDF &bsdf,
 		*emissionPdfW = distPdf * latLongMappingPdf / (M_PI * envRadius * envRadius);
 
 	 Spectrum result = temperatureScale * gain * imageMap->GetSpectrum(UV(uv[0], uv[1])) ;
-	 if (brightness > 0) result = result + adder;
+	
 	// else if (brightness < 0) result = result - adder;
 	 
 	 assert (!result.IsNaN() && !result.IsInf() && !result.IsNeg());
@@ -260,8 +326,11 @@ Properties InfiniteLight::ToProperties(const ImageMapCache &imgMapCache, const b
 	Properties props = EnvLightSource::ToProperties(imgMapCache, useRealFileName);
 
 	props.Set(Property(prefix + ".type")("infinite"));
-	props.Set(Property(prefix + ".contrast")(1.f));
-	props.Set(Property(prefix + ".brightness")(1.f));
+	//props.Set(Property(prefix + ".contrast")(1.f));
+	//props.Set(Property(prefix + ".brightness")(1.f));
+	props.Set(Property(prefix + ".levelMinPerc")(0.f));
+	props.Set(Property(prefix + ".levelMaxPerc")(100.f));
+	props.Set(Property(prefix + ".gammaCorrection")(1.f));
 	const string fileName = useRealFileName ?
 		imageMap->GetName() : imgMapCache.GetSequenceFileName(imageMap);
 	props.Set(Property(prefix + ".file")(fileName));
