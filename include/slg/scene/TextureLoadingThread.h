@@ -82,6 +82,8 @@ namespace slg {
 		std::vector< TextureLoadingTask *> taskList;
 		bool ancora;
 		int waitingCount;
+
+		double lastUpdate;
 	public:
 		TextureLoadingThread(slg::Scene* scene) ;
 		~TextureLoadingThread();
