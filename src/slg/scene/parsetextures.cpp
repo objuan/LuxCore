@@ -250,7 +250,6 @@ void TextureLoadingThread::run(int threadId)
 
 	while (ancora)
 	{
-		
 		TextureLoadingTask *task=NULL;
 		mtx_.lock();
 		if (taskList.size() > 0)
@@ -272,18 +271,24 @@ void TextureLoadingThread::run(int threadId)
 		{
 			task->load(threadId);
 			waitingCount--;
+			
+			lastUpdate = WallClockTime();
+
 			SDL_LOG("[TH" << threadId << "] Pop txt: " << task->txtName << " count: " << waitingCount);
 			delete task;
 		}
 		
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
 	}
-
 }
+
 void TextureLoadingThread::waitEnd()
 {
+	lastUpdate = WallClockTime();
+	double loadTimeoutSecs = 60 * 3;
+
 	int i = 0;
-	while (ancora && waitingCount > 0)
+	while (ancora && waitingCount > 0 && ((WallClockTime() - lastUpdate) > loadTimeoutSecs))
 	{
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 		i++;
@@ -293,6 +298,13 @@ void TextureLoadingThread::waitEnd()
 			SDL_LOG("Waiting count: " << waitingCount);
 		}
 	}
+	for (int j = 0; j < taskList.size(); j++)
+	{
+		// carico sul primo task in sequenza
+
+		taskList[j]->load(0);
+	}
+	
 	
 	for(int i = 0; i < toUpdate->size(); i++)
 	{
