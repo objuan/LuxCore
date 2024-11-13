@@ -32,12 +32,13 @@ using namespace slg;
 //------------------------------------------------------------------------------
 
 InfiniteLight::InfiniteLight() :
-	imageMap(NULL), imageMapDistribution(nullptr), visibilityMapCache(nullptr) {
+	imageMap(NULL), imageMapLoaded(NULL),imageMapDistribution(nullptr), visibilityMapCache(nullptr) {
 }
 
 InfiniteLight::~InfiniteLight() {
 	delete imageMapDistribution;
 	delete visibilityMapCache;
+	delete imageMapLoaded;
 }
 
 float GetLum(Spectrum& color) {
@@ -58,6 +59,14 @@ void AddLum(Spectrum& color,float factor) {
 void InfiniteLight::Preprocess() {
 	EnvLightSource::Preprocess();
 
+	if (imageMapLoaded == NULL)
+		imageMapLoaded = imageMap->Copy();
+	else
+	{
+		if (imageMap != NULL) delete imageMap;
+		imageMap = imageMapLoaded->Copy();
+	}
+		
 	ImageMapStorage *imageMapStorage = imageMap->GetStorage();
 
 //	this->gain = Spectrum(contrast);

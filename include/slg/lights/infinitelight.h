@@ -64,6 +64,7 @@ public:
 
 	virtual luxrays::Properties ToProperties(const ImageMapCache &imgMapCache, const bool useRealFileName) const;
 
+	ImageMap* imageMapLoaded;
 	ImageMap *imageMap;
 	bool sampleUpperHemisphereOnly;
 	float inWhite;
