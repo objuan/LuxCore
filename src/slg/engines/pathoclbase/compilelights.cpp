@@ -137,8 +137,8 @@ void CompiledScene::CompileLightStrategy() {
 		lightsDistribution = nullptr;
 		lightsDistributionSize = 0;
 
-		if (distributionIllumLightStrategy->GetLightsDistribution()) {
-			lightsDistribution = CompileDistribution1D(distributionIllumLightStrategy->GetLightsDistribution(),
+		if (distributionIllumLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL)) {
+			lightsDistribution = CompileDistribution1D(distributionIllumLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL),
 					&lightsDistributionSize);
 		}
 	} else {
@@ -150,8 +150,8 @@ void CompiledScene::CompileLightStrategy() {
 			lightsDistribution = nullptr;
 			lightsDistributionSize = 0;
 
-			if (dlscLightStrategy->GetLightsDistribution()) {
-				lightsDistribution = CompileDistribution1D(dlscLightStrategy->GetLightsDistribution(),
+			if (dlscLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL)) {
+				lightsDistribution = CompileDistribution1D(dlscLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL),
 						&lightsDistributionSize);
 			}
 			
@@ -173,8 +173,8 @@ void CompiledScene::CompileLightStrategy() {
 	// Check if it is an DistributionLightStrategy
 	const DistributionLightStrategy *distributionInfLightStrategy = dynamic_cast<const DistributionLightStrategy *>(infiniteLightStrategy);
 	if (distributionInfLightStrategy) {
-		if (distributionInfLightStrategy->GetLightsDistribution()) {
-			infiniteLightSourcesDistribution = CompileDistribution1D(distributionInfLightStrategy->GetLightsDistribution(),
+		if (distributionInfLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL)) {
+			infiniteLightSourcesDistribution = CompileDistribution1D(distributionInfLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL),
 					&infiniteLightSourcesDistributionSize);
 		}
 	} else {
@@ -182,8 +182,8 @@ void CompiledScene::CompileLightStrategy() {
 		
 		const LightStrategyDLSCache *dlscLightStrategy = dynamic_cast<const LightStrategyDLSCache *>(illuminateLightStrategy);
 		if (dlscLightStrategy) {
-			if (dlscLightStrategy->GetLightsDistribution()) {
-				infiniteLightSourcesDistribution = CompileDistribution1D(dlscLightStrategy->GetLightsDistribution(),
+			if (dlscLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL)) {
+				infiniteLightSourcesDistribution = CompileDistribution1D(dlscLightStrategy->GetLightsDistribution(LightStrategyQuery::TYPE_QUERY_ALL),
 						&infiniteLightSourcesDistributionSize);
 			}
 		} else

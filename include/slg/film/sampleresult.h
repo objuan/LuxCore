@@ -107,6 +107,9 @@ public:
 
 	bool useFilmSplat;
 
+	// used for light filter
+	int lightGroupFilter;
+
 private:
 	const Film::FilmChannels *channels;
 };

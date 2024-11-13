@@ -39,6 +39,10 @@ typedef enum {
 	LIGHT_STRATEGY_TYPE_COUNT
 } LightStrategyType;
 
+typedef enum {
+	TYPE_QUERY_ALL=0, TYPE_QUERY_GROUP_0, TYPE_QUERY_GROUP_1
+} LightStrategyQuery;
+
 class LightStrategy {
 public:
 	virtual ~LightStrategy() { }
@@ -50,16 +54,17 @@ public:
 			const bool useRTMode) = 0;
 
 	// Used for direct light sampling
-	virtual LightSource *SampleLights(const float u,
+	virtual LightSource *SampleLights(LightStrategyQuery query,const float u,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume,
 			float *pdf) const = 0;
-	virtual float SampleLightPdf(const LightSource *light,
+
+	virtual float SampleLightPdf(LightStrategyQuery query,const LightSource *light,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume) const = 0;
 
 	// Used for light emission
-	virtual LightSource *SampleLights(const float u, float *pdf) const = 0;
+	virtual LightSource *SampleLights(LightStrategyQuery query, const float u, float *pdf) const = 0;
 
 	// Transform the current object in Properties
 	virtual luxrays::Properties ToProperties() const = 0;

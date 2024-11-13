@@ -29,31 +29,49 @@ namespace slg {
 
 class DistributionLightStrategy : public LightStrategy {
 public:
-	virtual ~DistributionLightStrategy() { delete lightsDistribution; }
+	virtual ~DistributionLightStrategy() {
+		delete lightsDistribution[0];
+		delete lightsDistribution[1];
+		delete lightsDistribution[2];
+		/*delete lightsDistribution_ALL;
+		delete lightsDistribution_INTERSECTABLE;
+		delete lightsDistribution_NON_INTERSECTABLE;*/
+	}
 
 	virtual void Preprocess(const Scene *scn, const LightStrategyTask taskType) { scene = scn; }
 
 	// Used for direct light sampling
-	virtual LightSource *SampleLights(const float u,
+	virtual LightSource *SampleLights(LightStrategyQuery query, const float u,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume,
 			float *pdf) const;
-	virtual float SampleLightPdf(const LightSource *light,
+	virtual float SampleLightPdf(LightStrategyQuery query,const LightSource *light,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume) const;
 
 	// Used for light emission
-	virtual LightSource *SampleLights(const float u, float *pdf) const;
+	virtual LightSource *SampleLights(LightStrategyQuery query, const float u, float *pdf) const;
 	
 	// Transform the current object in Properties
 	virtual luxrays::Properties ToProperties() const;
 	
-	const luxrays::Distribution1D *GetLightsDistribution() const { return lightsDistribution; }
+	inline const luxrays::Distribution1D* GetLightsDistribution(LightStrategyQuery query) const
+	{
+		return lightsDistribution[(int)query];
+		/*if (query == LightStrategyQuery::TYPE_QUERY_ALL) return lightsDistribution_ALL;
+		else if (query == LightStrategyQuery::TYPE_QUERY_INTERSECTABLE) return lightsDistribution_INTERSECTABLE;
+		else   return lightsDistribution_NON_INTERSECTABLE;*/
+	}
 	
 protected:
-	DistributionLightStrategy(const LightStrategyType t) : LightStrategy(t), lightsDistribution(nullptr) { }
+	DistributionLightStrategy(const LightStrategyType t) : LightStrategy(t){ 
+		lightsDistribution[0] = nullptr;
+		lightsDistribution[1] = nullptr;
+		lightsDistribution[2] = nullptr;
+	}
 
-	luxrays::Distribution1D *lightsDistribution;
+	luxrays::Distribution1D *lightsDistribution[3];
+	
 };
 
 }

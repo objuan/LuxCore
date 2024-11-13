@@ -29,7 +29,7 @@ using namespace std;
 //------------------------------------------------------------------------------
 
 BiDirCPURenderEngine::BiDirCPURenderEngine(const RenderConfig *rcfg) :
-		CPUNoTileRenderEngine(rcfg), sampleSplatter(nullptr),
+		CPUNoTileRenderEngine(rcfg), sampleSplatter(nullptr), samplerSharedData_1(nullptr), seedBaseGenerator_1(131),
 		photonGICache(nullptr) {
 	if (rcfg->scene->camera->GetType() == Camera::STEREO)
 		throw std::runtime_error("BIDIRCPU render engine doesn't support stereo camera");
@@ -44,6 +44,8 @@ BiDirCPURenderEngine::BiDirCPURenderEngine(const RenderConfig *rcfg) :
 BiDirCPURenderEngine::~BiDirCPURenderEngine() {
 	delete photonGICache;
 	delete aovWarmupSamplerSharedData;
+	if (light_pingpong && samplerSharedData_1)
+		delete samplerSharedData_1;	
 }
 
 RenderState *BiDirCPURenderEngine::GetRenderState() {
@@ -62,6 +64,12 @@ void BiDirCPURenderEngine::StartLockLess() {
 	//--------------------------------------------------------------------------
 	// Rendering parameters
 	//--------------------------------------------------------------------------
+	light_pingpong = false;
+	envgroup = 0;
+
+	light_pingpong = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.pingpong")).Get<int>())==1;
+	envgroup = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.envgroup")).Get<int>());
+	percgroup0 = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.percgroup0")).Get<int>());
 
 	maxEyePathDepth = (u_int)Max(1, cfg.Get(GetDefaultProps().Get("path.maxdepth")).Get<int>());
 	maxLightPathDepth = (u_int)Max(1, cfg.Get(GetDefaultProps().Get("light.maxdepth")).Get<int>());
@@ -136,7 +144,18 @@ void BiDirCPURenderEngine::StartLockLess() {
 	delete sampleSplatter;
 	sampleSplatter = new FilmSampleSplatter(pixelFilter);
 
+	if (light_pingpong)
+	{
+		samplerSharedData_1 = renderConfig->AllocSamplerSharedData(&seedBaseGenerator_1, film);
+		if (renderConfig->cfg.IsDefined("renderengine.seed")) {
+			const u_int seed = Max(1u, renderConfig->cfg.Get("renderengine.seed").Get<u_int>());
+			seedBaseGenerator_1.init(seed);
+		}
+	}
+
 	CPUNoTileRenderEngine::StartLockLess();
+
+	
 }
 
 void BiDirCPURenderEngine::InitFilm() {
@@ -192,6 +211,9 @@ const Properties &BiDirCPURenderEngine::GetDefaultProps() {
 			Property("path.clamping.variance.maxvalue")(0.f) <<
 			Property("path.albedospecular.type")("REFLECT_TRANSMIT") <<
 			Property("path.albedospecular.glossinessthreshold")(.05f) <<
+			Property("path.light.pingpong")(0) <<
+			Property("path.light.envgroup")(0) <<
+			Property("path.light.percgroup0")(33) <<
 			PhotonGICache::GetDefaultProps();
 
 	return props;

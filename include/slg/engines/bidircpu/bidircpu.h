@@ -103,6 +103,13 @@ protected:
 	bool Bounce(const float time, Sampler *sampler, const u_int sampleOffset,
 		PathVertexVM *pathVertex, luxrays::Ray *nextEventRay) const;
 
+
+	// for light filter
+	LightStrategyQuery queryMode;
+	int lightGroupFilter;
+	LightStrategyQuery envgroup;
+	int percgroup0;
+
 	float misVmWeightFactor; // Weight of vertex merging (used in VC)
     float misVcWeightFactor; // Weight of vertex connection (used in VM)
 	float vmNormalization; // 1 / (Pi * radius^2 * light_path_count)
@@ -154,6 +161,10 @@ public:
 
 	friend class BiDirCPURenderThread;
 
+	bool light_pingpong;
+	int envgroup;
+	int percgroup0;
+
 protected:
 	static const luxrays::Properties &GetDefaultProps();
 
@@ -167,7 +178,13 @@ protected:
 	u_int aovWarmupSPP;
 	SobolSamplerSharedData *aovWarmupSamplerSharedData;
 
+	// lighgt ping pong
+	
+	SamplerSharedData* samplerSharedData_1;
+	luxrays::RandomGenerator seedBaseGenerator_1;
+
 private:
+
 	CPURenderThread *NewRenderThread(const u_int index, luxrays::IntersectionDevice *device) {
 		return new BiDirCPURenderThread(this, index, device);
 	}

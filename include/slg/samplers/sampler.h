@@ -110,6 +110,8 @@ public:
 	static SamplerType String2SamplerType(const std::string &type);
 	static std::string SamplerType2String(const SamplerType type);
 
+	int lightGroupFilter;
+
 protected:
 	static const luxrays::Properties &GetDefaultProps();
 
@@ -135,6 +137,7 @@ protected:
 	u_int requestedSamples;
 	// If samples 0 and 1 should be expressed in pixels
 	bool imageSamplesEnable;
+
 };
 
 }

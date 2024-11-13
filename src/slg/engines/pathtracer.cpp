@@ -148,7 +148,7 @@ PathTracer::DirectLightResult PathTracer::DirectLightSampling(
 		// Pick a light source to sample
 		const Normal landingNormal = bsdf.hitPoint.intoObject ? bsdf.hitPoint.shadeN : -bsdf.hitPoint.shadeN;
 		float lightPickPdf;
-		const LightSource *light = lightStrategy->SampleLights(u0,
+		const LightSource *light = lightStrategy->SampleLights(LightStrategyQuery::TYPE_QUERY_ALL, u0,
 				bsdf.hitPoint.p, landingNormal, bsdf.IsVolume(), &lightPickPdf);
 
 		if (light) {
@@ -284,7 +284,7 @@ void PathTracer::DirectHitFiniteLight(const Scene *scene,
 		float weight;
 		if (!(pathInfo.lastBSDFEvent & SPECULAR)) {
 			const LightStrategy *lightStrategy = scene->lightDefs.GetIlluminateLightStrategy();
-			const float lightPickProb = lightStrategy->SampleLightPdf(lightSource,
+			const float lightPickProb = lightStrategy->SampleLightPdf(LightStrategyQuery::TYPE_QUERY_ALL, lightSource,
 					ray.o, pathInfo.lastShadeN, pathInfo.lastFromVolume);
 
 			// This is a specific check to avoid fireflies with DLSC
@@ -323,7 +323,7 @@ void PathTracer::DirectHitInfiniteLight(const Scene *scene,
 			float weight;
 			if (!(pathInfo.lastBSDFEvent & SPECULAR)) {
 				const float lightPickProb = scene->lightDefs.GetIlluminateLightStrategy()->
-						SampleLightPdf(envLight, ray.o, pathInfo.lastShadeN, pathInfo.lastFromVolume);
+						SampleLightPdf(LightStrategyQuery::TYPE_QUERY_ALL,envLight, ray.o, pathInfo.lastShadeN, pathInfo.lastFromVolume);
 
 				// MIS between BSDF sampling and direct light sampling
 				weight = PowerHeuristic(pathInfo.lastBSDFPdfW, directPdfW * lightPickProb);
@@ -780,7 +780,7 @@ void PathTracer::RenderLightSample(IntersectionDevice *device,
 	// Select one light source
 	float lightPickPdf;
 	const LightSource *light = scene->lightDefs.GetEmitLightStrategy()->
-			SampleLights(sampler->GetSample(0), &lightPickPdf);
+			SampleLights(LightStrategyQuery::TYPE_QUERY_ALL,sampler->GetSample(0), &lightPickPdf);
 
 	if (light) {
 		// Initialize the light path

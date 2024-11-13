@@ -44,16 +44,16 @@ public:
 			const bool useRTMode);
 	
 	// Used for direct light sampling
-	virtual LightSource *SampleLights(const float u,
+	virtual LightSource *SampleLights(LightStrategyQuery query,const float u,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume,
 			float *pdf) const;
-	virtual float SampleLightPdf(const LightSource *light,
+	virtual float SampleLightPdf(LightStrategyQuery query,const LightSource *light,
 			const luxrays::Point &p, const luxrays::Normal &n,
 			const bool isVolume) const;
 
 	// Used for light emission
-	virtual LightSource *SampleLights(const float u, float *pdf) const;
+	virtual LightSource *SampleLights(LightStrategyQuery query, const float u, float *pdf) const;
 
 	virtual LightStrategyType GetType() const { return GetObjectType(); }
 	virtual std::string GetTag() const { return GetObjectTag(); }
@@ -61,7 +61,7 @@ public:
 	virtual luxrays::Properties ToProperties() const;
 
 	// Used for OpenCL data translation
-	const luxrays::Distribution1D *GetLightsDistribution() const { return distributionStrategy.GetLightsDistribution(); }
+	const luxrays::Distribution1D *GetLightsDistribution(LightStrategyQuery query) const { return distributionStrategy.GetLightsDistribution(query); }
 	const DLSCBvh *GetBVH() const { return DLSCache.GetBVH(); }
 	bool UseRTMode() const { return useRTMode; }
 	float GetEntryRadius() const { return DLSCache.GetParams().visibility.lookUpRadius; }

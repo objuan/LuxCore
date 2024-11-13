@@ -129,7 +129,7 @@ bool TracePhotonsThread::TracePhotonPath(RandomGenerator &rndGen,
 	// Select one light source
 	float lightPickPdf;
 	const LightSource *light = scene->lightDefs.GetEmitLightStrategy()->
-			SampleLights(samples[1], &lightPickPdf);
+			SampleLights(LightStrategyQuery::TYPE_QUERY_ALL, samples[1], &lightPickPdf);
 
 	if (light) {
 		// Initialize the light path

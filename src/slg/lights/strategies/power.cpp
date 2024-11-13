@@ -39,8 +39,13 @@ void LightStrategyPower::Preprocess(const Scene *scn, const LightStrategyTask ta
 	const float envRadius = InfiniteLightSource::GetEnvRadius(*scene);
 	const float invEnvRadius2 = 1.f / (envRadius * envRadius);
 
-	vector<float> lightPower;
-	lightPower.reserve(lightCount);
+	vector<float> lightPower_GROUP_0;
+	vector<float> lightPower_GROUP_1;
+	vector<float> lightPower_ALL;
+
+	lightPower_GROUP_0.reserve(lightCount);
+	lightPower_GROUP_1.reserve(lightCount);
+	lightPower_ALL.reserve(lightCount);
 
 	const vector<LightSource *> &lights = scene->lightDefs.GetLightSources();
 	for (u_int i = 0; i < lightCount; ++i) {
@@ -50,23 +55,44 @@ void LightStrategyPower::Preprocess(const Scene *scn, const LightStrategyTask ta
 		if (l->IsInfinite())
 			power *= invEnvRadius2;
 
+		int lightGroup = l->GetID() == 0 ? 0 : 1;
+		bool g0 = lightGroup == 0; //l->IsIntersectable();
+
 		switch (taskType) {
 			case TASK_EMIT: {
-				lightPower.push_back(power);
+				lightPower_ALL.push_back(power);
+				lightPower_GROUP_0.push_back( g0 ? power : 0.f);
+				lightPower_GROUP_1.push_back(!g0 ? power : 0.f);
 				break;
 			}
 			case TASK_ILLUMINATE: {
 				if (l->IsDirectLightSamplingEnabled())
-					lightPower.push_back(power);
+				{
+					lightPower_ALL.push_back(power);
+					lightPower_GROUP_0.push_back(g0 ? power : 0.f);
+					lightPower_GROUP_1.push_back(!g0 ? power : 0.f);
+				}
 				else
-					lightPower.push_back(0.f);
+				{
+					lightPower_ALL.push_back(0.f);
+					lightPower_GROUP_0.push_back(0.f);
+					lightPower_GROUP_1.push_back(0.f);
+				}
 				break;
 			}
 			case TASK_INFINITE_ONLY: {
 				if (l->IsInfinite())
-					lightPower.push_back(power);
+				{
+					lightPower_ALL.push_back(power);
+					lightPower_GROUP_0.push_back(g0 ? power : 0.f);
+					lightPower_GROUP_1.push_back(!g0 ? power : 0.f);
+				}
 				else
-					lightPower.push_back(0.f);
+				{
+					lightPower_ALL.push_back(0.f);
+					lightPower_GROUP_0.push_back(0.f);
+					lightPower_GROUP_1.push_back(0.f);
+				}
 				break;
 			}
 			default:
@@ -75,8 +101,13 @@ void LightStrategyPower::Preprocess(const Scene *scn, const LightStrategyTask ta
 	}
 
 	// Build the data to power based light sampling
-	delete lightsDistribution;
-	lightsDistribution = new Distribution1D(&lightPower[0], lightCount);
+	delete lightsDistribution[0];
+	delete lightsDistribution[1];
+	delete lightsDistribution[2];
+//	lightsDistribution[0] = new Distribution1D(&lightPower[0], lightCount);
+	lightsDistribution[0] = new Distribution1D(&lightPower_ALL[0], lightCount);
+	lightsDistribution[1] = new Distribution1D(&lightPower_GROUP_0[0], lightCount);
+	lightsDistribution[2] = new Distribution1D(&lightPower_GROUP_1[0], lightCount);
 }
 
 // Static methods used by LightStrategyRegistry

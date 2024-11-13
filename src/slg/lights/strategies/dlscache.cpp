@@ -46,7 +46,7 @@ void LightStrategyDLSCache::Preprocess(const Scene *scn, const LightStrategyTask
 		DLSCache.Build(scn);
 }
 
-LightSource *LightStrategyDLSCache::SampleLights(const float u,
+LightSource *LightStrategyDLSCache::SampleLights(LightStrategyQuery query,const float u,
 			const Point &p, const Normal &n,
 			const bool isVolume,
 			float *pdf) const {
@@ -62,12 +62,12 @@ LightSource *LightStrategyDLSCache::SampleLights(const float u,
 			else
 				return nullptr;
 		} else
-			return distributionStrategy.SampleLights(u, p, n, isVolume, pdf);
+			return distributionStrategy.SampleLights(query, u, p, n, isVolume, pdf);
 	} else
-		return distributionStrategy.SampleLights(u, p, n, isVolume, pdf);
+		return distributionStrategy.SampleLights(query, u, p, n, isVolume, pdf);
 }
 
-float LightStrategyDLSCache::SampleLightPdf(const LightSource *light,
+float LightStrategyDLSCache::SampleLightPdf(LightStrategyQuery query,const LightSource *light,
 		const Point &p, const Normal &n, const bool isVolume) const {
 	if ((taskType == TASK_ILLUMINATE) && !useRTMode) {
 		// Check if a cache entry is available for this point
@@ -76,14 +76,14 @@ float LightStrategyDLSCache::SampleLightPdf(const LightSource *light,
 		if (lightsDistribution)
 			return lightsDistribution->PdfDiscrete(light->lightSceneIndex);
 		else
-			return distributionStrategy.SampleLightPdf(light, p, n, isVolume);
+			return distributionStrategy.SampleLightPdf(query,light, p, n, isVolume);
 	} else
-		return distributionStrategy.SampleLightPdf(light, p, n, isVolume);
+		return distributionStrategy.SampleLightPdf(query,light, p, n, isVolume);
 }
 
-LightSource *LightStrategyDLSCache::SampleLights(const float u,
+LightSource *LightStrategyDLSCache::SampleLights(LightStrategyQuery query,const float u,
 			float *pdf) const {
-	return distributionStrategy.SampleLights(u, pdf);
+	return distributionStrategy.SampleLights(query,u, pdf);
 }
 
 Properties LightStrategyDLSCache::ToProperties() const {

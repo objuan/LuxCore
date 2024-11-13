@@ -66,8 +66,8 @@ void LightStrategyUniform::Preprocess(const Scene *scn, const LightStrategyTask 
 		}
 	}
 
-	delete lightsDistribution;
-	lightsDistribution = new Distribution1D(&lightPower[0], lightCount);
+	delete lightsDistribution[0];
+	lightsDistribution[0] = new Distribution1D(&lightPower[0], lightCount);
 }
 
 // Static methods used by LightStrategyRegistry

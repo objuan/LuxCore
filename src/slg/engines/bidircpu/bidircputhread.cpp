@@ -95,7 +95,7 @@ void BiDirCPURenderThread::AOVWarmUp(RandomGenerator *rndGen) {
 	maxPathDepthInfo.diffuseDepth = engine->maxEyePathDepth;
 	maxPathDepthInfo.glossyDepth = engine->maxEyePathDepth;
 	maxPathDepthInfo.specularDepth = engine->maxEyePathDepth;
-
+	
 	while (sampler.GetPassCount() < engine->aovWarmupSPP) {
 		if (boost::this_thread::interruption_requested())
 			return;
@@ -227,7 +227,7 @@ SampleResult &BiDirCPURenderThread::AddResult(vector<SampleResult> &sampleResult
 	sampleResults.resize(size + 1);
 
 	SampleResult &sampleResult = sampleResults[size];
-
+	sampleResult.lightGroupFilter = lightGroupFilter;
 	sampleResult.Init(
 			fromLight ? &lightSampleResultsChannels : &eyeSampleResultsChannels,
 			engine->film->GetRadianceGroupCount());
@@ -417,7 +417,9 @@ void BiDirCPURenderThread::DirectLightSampling(const float time,
 		// Pick a light source to sample
 		const Normal landingNormal = eyeVertex.bsdf.hitPoint.intoObject ? eyeVertex.bsdf.hitPoint.geometryN : -eyeVertex.bsdf.hitPoint.geometryN;
 		float lightPickPdf;
-		const LightSource *light = scene->lightDefs.GetEmitLightStrategy()->SampleLights(u0,
+		const LightSource *light = scene->lightDefs.GetEmitLightStrategy()->SampleLights(
+			queryMode,
+			u0,
 				eyeVertex.bsdf.hitPoint.p,
 				landingNormal,
 				eyeVertex.bsdf.IsVolume(),
@@ -487,6 +489,7 @@ void BiDirCPURenderThread::DirectLightSampling(const float time,
 	}
 }
 
+
 void BiDirCPURenderThread::DirectHitLight(
 		const LightSource *light, const Spectrum &lightRadiance,
 		const float directPdfA, const float emissionPdfW,
@@ -502,7 +505,8 @@ void BiDirCPURenderThread::DirectHitLight(
 	BiDirCPURenderEngine *engine = (BiDirCPURenderEngine *)renderEngine;
 	Scene *scene = engine->renderConfig->scene;
 
-	const float lightPickPdf = scene->lightDefs.GetEmitLightStrategy()->SampleLightPdf(light,
+	const float lightPickPdf = scene->lightDefs.GetEmitLightStrategy()->SampleLightPdf(queryMode,
+			light,
 			eyeVertex.bsdf.hitPoint.p, eyeVertex.bsdf.hitPoint.geometryN,
 			eyeVertex.bsdf.IsVolume());
 
@@ -516,15 +520,22 @@ void BiDirCPURenderThread::DirectHitLight(
 	assert (radiance->IsValid());
 }
 
+/// <summary>
+/// sullo sfondo
+/// </summary>
 void BiDirCPURenderThread::DirectHitLight(const bool finiteLightSource,
 		const PathVertexVM &eyeVertex, SampleResult &eyeSampleResult) const {
 	float directPdfA, emissionPdfW;
 	if (finiteLightSource) {
-		const Spectrum lightRadiance = eyeVertex.bsdf.GetEmittedRadiance(&directPdfA, &emissionPdfW);
+	//	if (queryMode != LightStrategyQuery::TYPE_QUERY_NOT_INTERSECTABLE)
+		{
+			const Spectrum lightRadiance = eyeVertex.bsdf.GetEmittedRadiance(&directPdfA, &emissionPdfW);
 
-		DirectHitLight(eyeVertex.bsdf.GetLightSource(), lightRadiance, directPdfA, emissionPdfW,
+			DirectHitLight(eyeVertex.bsdf.GetLightSource(), lightRadiance, directPdfA, emissionPdfW,
 				eyeVertex, &eyeSampleResult.radiance[eyeVertex.bsdf.GetLightID()]);
-	} else {
+		}
+	} else if (queryMode == envgroup)//::TYPE_QUERY_INTERSECTABLE)
+	{
 		BiDirCPURenderEngine *engine = (BiDirCPURenderEngine *)renderEngine;
 		Scene *scene = engine->renderConfig->scene;
 
@@ -549,8 +560,10 @@ bool BiDirCPURenderThread::TraceLightPath(const float time,
 	// Select one light source
 	// BiDir can use only a single strategy, emit in this case
 	float lightPickPdf;
+	
 	const LightSource *light = scene->lightDefs.GetEmitLightStrategy()->
-			SampleLights(sampler->GetSample(2), &lightPickPdf);
+			SampleLights(queryMode,sampler->GetSample(2), &lightPickPdf);
+
 	if (!light)
 		return false;
 
@@ -733,8 +746,6 @@ void BiDirCPURenderThread::RenderFunc() {
 	Scene *scene = engine->renderConfig->scene;
 	Camera * camera = scene->camera;
 
-	
-
 	//Camera* camera = new ProjectiveCamera(base_camera->GetType(), base_camera->);
 
 	//const CameraType type, const float* screenWindow,
@@ -747,15 +758,32 @@ void BiDirCPURenderThread::RenderFunc() {
 	if (engine->aovWarmupSPP > 0)
 		AOVWarmUp(rndGen);
 	
-	// Setup the sampler
-	Sampler *sampler = engine->renderConfig->AllocSampler(rndGen, engine->film, engine->sampleSplatter,
-			engine->samplerSharedData, Properties());
+	// Setup the sampler. dual shade data
+	Sampler *sampler_0 = engine->renderConfig->AllocSampler(rndGen, engine->film, engine->sampleSplatter,
+			 engine->samplerSharedData, Properties());
+
 	const u_int sampleSize = 
 		sampleBootSize + // To generate the initial light vertex and trace eye ray
 		engine->maxLightPathDepth * sampleLightStepSize + // For each light vertex
 		engine->maxEyePathDepth * sampleEyeStepSize; // For each eye vertex
-	sampler->SetThreadIndex(threadIndex);
-	sampler->RequestSamples(PIXEL_NORMALIZED_AND_SCREEN_NORMALIZED, sampleSize);
+	sampler_0->SetThreadIndex(threadIndex);
+	sampler_0->RequestSamples(PIXEL_NORMALIZED_AND_SCREEN_NORMALIZED, sampleSize);
+
+	Sampler* sampler_1 = nullptr;
+	RandomGenerator* ping_pong_rndGen = nullptr;
+	RandomGenerator* ping_pong_rndSel = nullptr;
+	if (engine->light_pingpong)
+	{
+		ping_pong_rndGen = new RandomGenerator(engine->seedBase + 1 + threadIndex);
+		ping_pong_rndSel = new RandomGenerator(engine->seedBase + 1 + threadIndex);
+
+		sampler_1 = engine->renderConfig->AllocSampler(ping_pong_rndGen, engine->film, engine->sampleSplatter,
+			engine->samplerSharedData_1, Properties());
+
+		sampler_1->SetThreadIndex(threadIndex);
+		sampler_1->RequestSamples(PIXEL_NORMALIZED_AND_SCREEN_NORMALIZED, sampleSize);
+	}
+
 
 	VarianceClamping varianceClamping(engine->sqrtVarianceClampMaxValue);
 
@@ -763,10 +791,28 @@ void BiDirCPURenderThread::RenderFunc() {
 	misVmWeightFactor = 0.f;
 	misVcWeightFactor = 0.f;
 
-	vector<SampleResult> sampleResults;
-	vector<PathVertexVM> lightPathVertices;
+	vector<SampleResult> sampleResults_0;
+	vector<SampleResult> sampleResults_1;
+	vector<PathVertexVM> lightPathVertices_0;
+	vector<PathVertexVM> lightPathVertices_1;
+
+	// default
+	if (engine->light_pingpong)
+		envgroup = engine->envgroup == 0 ? LightStrategyQuery::TYPE_QUERY_GROUP_0 : LightStrategyQuery::TYPE_QUERY_GROUP_1;
+	else
+		envgroup = TYPE_QUERY_ALL;
+
+	lightGroupFilter = 0;
+	Sampler* sampler =sampler_0;
+	sampler->lightGroupFilter = 0;
+	vector<SampleResult>& sampleResults = sampleResults_0;
+	vector<PathVertexVM>& lightPathVertices = lightPathVertices_0;
+	queryMode = LightStrategyQuery::TYPE_QUERY_ALL;
+	float group0Perc = (float)engine->percgroup0 / 100;
+
 
 	for(u_int steps = 0; !boost::this_thread::interruption_requested(); ++steps) {
+
 		// Check if we are in pause mode
 		if (engine->pauseMode) {
 			// Check every 100ms if I have to continue the rendering
@@ -777,10 +823,27 @@ void BiDirCPURenderThread::RenderFunc() {
 				break;
 		}
 
+		if (engine->light_pingpong)
+		{
+			float p01 = ping_pong_rndSel->floatValue();
+			if (p01 < group0Perc)
+				queryMode = LightStrategyQuery::TYPE_QUERY_GROUP_0;
+			else
+				queryMode = LightStrategyQuery::TYPE_QUERY_GROUP_1;
+
+			sampleResults = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? sampleResults_0 : sampleResults_1;
+			lightPathVertices = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? lightPathVertices_0 : lightPathVertices_1;
+
+			// -----
+			sampler = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? sampler_0 : sampler_1;
+			lightGroupFilter = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? 0 : 1;
+			sampler->lightGroupFilter = lightGroupFilter;
+		}
+
 		sampleResults.clear();
 		lightPathVertices.clear();
 
-		const float timeSample = sampler->GetSample(12);
+		const float timeSample = sampler->GetSample(12) ;
 		const float time = scene->camera->GenerateRayTime(timeSample);
 
 		// Sample a point on the camera lens
@@ -1020,8 +1083,15 @@ void BiDirCPURenderThread::RenderFunc() {
 	if (camera->filmWidth != engine->film->GetCameraWidth())
 		camera->Update(engine->film->GetWidth(), engine->film->GetHeight(), NULL);
 
-	delete sampler;
+	delete sampler_0;
+	if (engine->light_pingpong)
+	{
+		delete sampler_1;
+		delete ping_pong_rndGen;
+		delete ping_pong_rndSel;
+	}
 	delete rndGen;
+	
 	//delete camera;
 
 	threadDone = true;
