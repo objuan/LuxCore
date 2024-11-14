@@ -266,7 +266,7 @@ void Film::AtomicAddSampleResultColor(const u_int x, const u_int y,
 		for (u_int i = 0; i < Min<u_int>(sampleResult.radiance.Size(), channel_RADIANCE_PER_PIXEL_NORMALIZEDs.size()); ++i)
 		{
 			// add only if lightGroupFilter equals to radiance i
-			if (sampleResult.lightGroupFilter == i)
+			if (sampleResult.lightGroupFilter == i || sampleResult.lightGroupFilter == -1  )
 				channel_RADIANCE_PER_PIXEL_NORMALIZEDs[i]->AtomicAddIfValidWeightedPixel(x, y, sampleResult.radiance[i].c, weight);
 		}
 	}
@@ -275,7 +275,7 @@ void Film::AtomicAddSampleResultColor(const u_int x, const u_int y,
 	if ((channel_RADIANCE_PER_SCREEN_NORMALIZEDs.size() > 0) && sampleResult.HasChannel(RADIANCE_PER_SCREEN_NORMALIZED)) {
 		for (u_int i = 0; i < Min<u_int>(sampleResult.radiance.Size(), channel_RADIANCE_PER_SCREEN_NORMALIZEDs.size()); ++i)
 		{
-			if (sampleResult.lightGroupFilter == i)
+			if (sampleResult.lightGroupFilter == i || sampleResult.lightGroupFilter == -1 )
 				channel_RADIANCE_PER_SCREEN_NORMALIZEDs[i]->AtomicAddIfValidWeightedPixel(x, y, sampleResult.radiance[i].c, weight);
 		}
 	}

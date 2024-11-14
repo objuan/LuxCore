@@ -802,9 +802,9 @@ void BiDirCPURenderThread::RenderFunc() {
 	else
 		envgroup = TYPE_QUERY_ALL;
 
-	lightGroupFilter = 0;
+	lightGroupFilter = -1;
 	Sampler* sampler =sampler_0;
-	sampler->lightGroupFilter = 0;
+	sampler->lightGroupFilter = lightGroupFilter;
 	vector<SampleResult>& sampleResults = sampleResults_0;
 	vector<PathVertexVM>& lightPathVertices = lightPathVertices_0;
 	queryMode = LightStrategyQuery::TYPE_QUERY_ALL;
