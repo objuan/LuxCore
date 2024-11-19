@@ -67,48 +67,18 @@ void InfiniteLight::Preprocess() {
 	ImageMapStorage *imageMapStorage = imageMap->GetStorage();
 	ImageMapStorage* imageMapStorageDest = imageMapWork->GetStorage();
 
-	//	this->gain = Spectrum(contrast);
-//	this->adder = Spectrum(abs(brightness));
-
 	
 	float lum;
-	float min_lum = 999999;
-	float max_lum = -9999999;
 	vector<float> data(imageMap->GetWidth() * imageMap->GetHeight());
-	//float maxVal = -INFINITY;
-	//float minVal = INFINITY;
-	for (u_int y = 0; y < imageMap->GetHeight(); ++y) {
-		for (u_int x = 0; x < imageMap->GetWidth(); ++x) {
-			const u_int index = x + y * imageMap->GetWidth();
-
-			if (sampleUpperHemisphereOnly && (y > imageMap->GetHeight() / 2))
-				data[index] = 0.f;
-			else
-				data[index] = imageMapStorage->GetFloat(index);
-
-			if (!IsValid(data[index]))
-				throw runtime_error("Pixel (" + ToString(x) + ", " + ToString(y) + ") in infinite light has an invalid value: " + ToString(data[index]));
-
-			lum = imageMapStorage->GetSpectrum(index).Y();
-
-			min_lum = min(min_lum, lum);
-			max_lum = max(max_lum, lum);
-			//maxVal = Max(data[index], maxVal);
-			//minVal = Min(data[index], minVal);
-		}
-	}
 	
-	//this->adjImageMap = new luxrays::Spectrum[imageMap->GetWidth() * imageMap->GetHeight()];
-
-	float lumAll = max_lum - min_lum;
-	float cutMin = (inBlack/100.f); // 0-1
+	/*float cutMin = (inBlack/100.f); // 0-1
 	float cutMax = (inWhite / 100.f);  // 0-1
 	float cutSize = cutMax - cutMin;
 
 	float outMin = (outBlack / 100.f); // 0-1
 	float outMax = (outWhite / 100.f);  // 0-1
 	float outSize = outMax - outMin;
-	float cc = 1 + 1 - cutSize;
+	float cc = 1 + 1 - cutSize;*/
 
 	float lum_in,lum_out;
 
@@ -122,22 +92,6 @@ void InfiniteLight::Preprocess() {
 
 			// luminosity
 			Spectrum sp = imageMapStorage->GetSpectrum(index);
-
-/*
-				for (int i = 0; i < 3; i++)
-				{
-					lum = sp.c[i];
-					// scale
-					lum -= 0.5f;
-					lum *= cc;
-					lum += 0.5f;
-
-					lum_in = min(99999.f, max(0.f, lum));
-					sp.c[i] = lum_in;
-
-
-				}
-				*/
 
 			sp = sp * a + Spectrum(b);
 
@@ -164,8 +118,6 @@ void InfiniteLight::Preprocess() {
 			imageMapStorageDest->SetSpectrum(index, sp);
 		}
 	}
-
-	//SLG_LOG("InfiniteLight luminance  Max=" << maxVal << " Min=" << minVal);
 
 	imageMapDistribution = new Distribution2D(&data[0], imageMap->GetWidth(), imageMap->GetHeight());
 }

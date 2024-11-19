@@ -64,14 +64,18 @@ public:
 
 	virtual luxrays::Properties ToProperties(const ImageMapCache &imgMapCache, const bool useRealFileName) const;
 
-	ImageMap* imageMapLoaded;
+	ImageMap* imageMapWork;
 	ImageMap *imageMap;
 	bool sampleUpperHemisphereOnly;
-	float inWhite;
+	/*float inWhite;
 	float inBlack;
 	float inGamma;
 	float outWhite;
-	float outBlack;
+	float outBlack;*/
+	float hue;
+	float contrast;
+	float saturation;
+	
 	luxrays::Spectrum adder;
 
 	// Visibility map cache options
@@ -82,6 +86,9 @@ private:
 	luxrays::Distribution2D *imageMapDistribution;
 
 	EnvLightVisibilityCache *visibilityMapCache;
+
+	luxrays::Spectrum RgbToHsv(const luxrays::Spectrum& rgb);
+	luxrays::Spectrum HsvToRgb(const luxrays::Spectrum& hsv);
 };
 
 }
