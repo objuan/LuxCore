@@ -286,8 +286,9 @@ LightSource *Scene::CreateLightSource(const string &name, const luxrays::Propert
 		il->lightToWorld = light2World;
 		il->imageMap = imgMap;
 		il->sampleUpperHemisphereOnly = props.Get(Property(propName + ".sampleupperhemisphereonly")(false)).Get<bool>();
-		//il->contrast = Max(0.f, props.Get(Property(propName + ".contrast")(1.f)).Get<float>());
-		//il->brightness = Max(-10.f, props.Get(Property(propName + ".brightness")(0.f)).Get<float>());
+		il->contrast = Max(-1.f, props.Get(Property(propName + ".contrast")(0.f)).Get<float>());
+		il->saturation = Max(0.f, props.Get(Property(propName + ".saturation")(1.f)).Get<float>());
+		il->hue = Max(0.f, props.Get(Property(propName + ".hue")(0.5f)).Get<float>());	
 		il->inBlack = Max(-0.f, props.Get(Property(propName + ".inlevel.black")(0.f)).Get<float>());
 		il->inWhite = Max(-0.f, props.Get(Property(propName + ".inlevel.white")(100.f)).Get<float>());
 		il->inGamma = Max(-0.f, props.Get(Property(propName + ".inlevel.gamma")(1.f)).Get<float>());

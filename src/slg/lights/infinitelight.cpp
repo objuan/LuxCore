@@ -32,13 +32,13 @@ using namespace slg;
 //------------------------------------------------------------------------------
 
 InfiniteLight::InfiniteLight() :
-	imageMap(NULL), imageMapLoaded(NULL),imageMapDistribution(nullptr), visibilityMapCache(nullptr) {
+	imageMap(NULL), imageMapWork(NULL),imageMapDistribution(nullptr), visibilityMapCache(nullptr) {
 }
 
 InfiniteLight::~InfiniteLight() {
 	delete imageMapDistribution;
 	delete visibilityMapCache;
-	delete imageMapLoaded;
+	delete imageMapWork;
 }
 
 float GetLum(Spectrum& color) {
@@ -59,17 +59,15 @@ void AddLum(Spectrum& color,float factor) {
 void InfiniteLight::Preprocess() {
 	EnvLightSource::Preprocess();
 
-	if (imageMapLoaded == NULL)
-		imageMapLoaded = imageMap->Copy();
-	else
-	{
-		if (imageMap != NULL) delete imageMap;
-		imageMap = imageMapLoaded->Copy();
-	}
+
+	SDL_LOG("InfiniteLisht preprocess. contrast " << contrast << " hue " << hue << " saturation " << saturation);
+
+	imageMapWork = imageMap->Copy();
 		
 	ImageMapStorage *imageMapStorage = imageMap->GetStorage();
+	ImageMapStorage* imageMapStorageDest = imageMapWork->GetStorage();
 
-//	this->gain = Spectrum(contrast);
+	//	this->gain = Spectrum(contrast);
 //	this->adder = Spectrum(abs(brightness));
 
 	
@@ -110,8 +108,13 @@ void InfiniteLight::Preprocess() {
 	float outMin = (outBlack / 100.f); // 0-1
 	float outMax = (outWhite / 100.f);  // 0-1
 	float outSize = outMax - outMin;
+	float cc = 1 + 1 - cutSize;
 
 	float lum_in,lum_out;
+
+	const float brightness = 0.0f;
+	const float a = 1.f + contrast;
+	const float b = brightness - contrast * 0.5f;
 
 	for (u_int y = 0; y < imageMap->GetHeight(); ++y) {
 		for (u_int x = 0; x < imageMap->GetWidth(); ++x) {
@@ -120,25 +123,45 @@ void InfiniteLight::Preprocess() {
 			// luminosity
 			Spectrum sp = imageMapStorage->GetSpectrum(index);
 
-			//lum = sp.Y();
-			lum = GetLum(sp);
+/*
+				for (int i = 0; i < 3; i++)
+				{
+					lum = sp.c[i];
+					// scale
+					lum -= 0.5f;
+					lum *= cc;
+					lum += 0.5f;
 
-			if (lum <= 1)
+					lum_in = min(99999.f, max(0.f, lum));
+					sp.c[i] = lum_in;
+
+
+				}
+				*/
+
+			sp = sp * a + Spectrum(b);
+
+			if (saturation != 1.0f || hue != 0.5f)
 			{
-				// scale
-
-				lum_in = pow(min(99999.f, max(0.f, (lum - cutMin) / cutSize)), inGamma);
-				float scale = lum_in / lum;
-				sp = sp * scale;
-
-				//// linear on output
-
-				lum_out = outMin + (lum_in)*outSize;
-
-				AddLum(sp, lum_out - lum_in);
-
-				imageMapStorage->SetSpectrum(index, sp);
+				Spectrum hsv = RgbToHsv(sp);
+				if (hue != 0.5f)
+				{
+					hsv.c[0] += hue + .5f;
+					hsv.c[0] = fmodf(hsv.c[0], 1.f);
+				}
+				if (saturation != 1.0f)
+					hsv.c[1] *= saturation;
+				sp = HsvToRgb(hsv);
 			}
+
+			for (int i = 0; i < 3; i++)
+			{
+				if (sp.c[i] < 0)
+					sp.c[i] = 0;
+			}
+
+
+			imageMapStorageDest->SetSpectrum(index, sp);
 		}
 	}
 
@@ -196,7 +219,7 @@ Spectrum InfiniteLight::GetRadiance(const Scene &scene,
 		*emissionPdfW = distPdf * latLongMappingPdf / (M_PI * envRadius * envRadius);
 	}
 
-	Spectrum result =  temperatureScale * gain * imageMap->GetSpectrum(UV(u, v)) ;
+	Spectrum result =  temperatureScale * gain * imageMapWork->GetSpectrum(UV(u, v)) ;
 	
 	//else if (brightness < 0) result = result - adder;
 	return result;
@@ -330,13 +353,85 @@ void InfiniteLight::UpdateVisibilityMap(const Scene *scene, const bool useRTMode
 	}
 }
 
+Spectrum InfiniteLight::RgbToHsv(const Spectrum& rgb) {
+	float cmax, cmin, h, s, v, cdelta;
+
+	cmax = Max(rgb.c[0], Max(rgb.c[1], rgb.c[2]));
+	cmin = Min(rgb.c[0], Min(rgb.c[1], rgb.c[2]));
+	cdelta = cmax - cmin;
+
+	v = cmax;
+
+	if (cmax != 0.f)
+		s = cdelta / cmax;
+	else {
+		s = 0.f;
+		h = 0.f;
+	}
+
+	if (s != 0.0f) {
+		Spectrum c;
+		float icdelta = 1.f / cdelta;
+		c.c[0] = (cmax - rgb.c[0]) * icdelta;
+		c.c[1] = (cmax - rgb.c[1]) * icdelta;
+		c.c[2] = (cmax - rgb.c[2]) * icdelta;
+
+		if (rgb.c[0] == cmax)
+			h = c.c[2] - c.c[1];
+		else if (rgb.c[1] == cmax)
+			h = 2.f + c.c[0] - c.c[2];
+		else
+			h = 4.f + c.c[1] - c.c[0];
+
+		h /= 6.f;
+
+		if (h < 0.f)
+			h += 1.f;
+	}
+	else
+		h = 0.f;
+
+	return Spectrum(h, s, v);
+}
+
+Spectrum InfiniteLight::HsvToRgb(const Spectrum& hsv) {
+	float i, f, p, q, t, h, s, v;
+
+	h = hsv.c[0];
+	s = hsv.c[1];
+	v = hsv.c[2];
+
+	if (s != 0.f) {
+		if (h == 1.f)
+			h = 0.f;
+
+		h *= 6.f;
+		i = Floor2Int(h);
+		f = h - i;
+
+		p = v * (1.f - s);
+		q = v * (1.f - (s * f));
+		t = v * (1.f - (s * (1.f - f)));
+
+		if (i == 0.f) return Spectrum(v, t, p);
+		else if (i == 1.f) return Spectrum(q, v, p);
+		else if (i == 2.f) return Spectrum(p, v, t);
+		else if (i == 3.f) return Spectrum(p, q, v);
+		else if (i == 4.f) return Spectrum(t, p, v);
+		else return Spectrum(v, p, q);
+	}
+	else
+		return Spectrum(v, v, v);
+}
+
 Properties InfiniteLight::ToProperties(const ImageMapCache &imgMapCache, const bool useRealFileName) const {
 	const string prefix = "scene.lights." + GetName();
 	Properties props = EnvLightSource::ToProperties(imgMapCache, useRealFileName);
 
 	props.Set(Property(prefix + ".type")("infinite"));
-	//props.Set(Property(prefix + ".contrast")(1.f));
-	//props.Set(Property(prefix + ".brightness")(1.f));
+	props.Set(Property(prefix + ".hue")(hue));
+	props.Set(Property(prefix + ".contrast")(contrast));
+	props.Set(Property(prefix + ".saturation")(saturation));
 	props.Set(Property(prefix + ".levelMinPerc")(0.f));
 	props.Set(Property(prefix + ".levelMaxPerc")(100.f));
 	props.Set(Property(prefix + ".gammaCorrection")(1.f));

@@ -288,22 +288,26 @@ void TextureLoadingThread::waitEnd()
 	double loadTimeoutSecs = 60 * 3;
 
 	int i = 0;
-	while (ancora && waitingCount > 0 && ((WallClockTime() - lastUpdate) > loadTimeoutSecs))
+	while (ancora && waitingCount > 0)// && ((WallClockTime() - lastUpdate) > loadTimeoutSecs))
 	{
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
 		i++;
 		if (i == 100)
 		{
 			i = 0;
-			SDL_LOG("Waiting count: " << waitingCount);
+			SDL_LOG("Waiting count: " << waitingCount + " waiting time " << (WallClockTime() - lastUpdate));
 		}
 	}
-	for (int j = 0; j < taskList.size(); j++)
+
+	SDL_LOG("Waiting count: " << waitingCount + " taskList.size() " << taskList.size());
+
+
+	/*for (int j = 0; j < taskList.size(); j++)
 	{
 		// carico sul primo task in sequenza
 
 		taskList[j]->load(0);
-	}
+	}*/
 	
 	
 	for(int i = 0; i < toUpdate->size(); i++)
