@@ -38,7 +38,7 @@ class Film;
 
 class GammaCorrectionPlugin : public ImagePipelinePlugin {
 public:
-	GammaCorrectionPlugin(const float gamma = 2.2f, const u_int tableSize = 16384);
+	GammaCorrectionPlugin(const float gamma = 2.2f, const u_int tableSize = 16384, const bool _fullRange = false);
 	virtual ~GammaCorrectionPlugin();
 
 	virtual ImagePipelinePlugin *Copy() const;
@@ -50,6 +50,7 @@ public:
 	virtual void ApplyHW(Film &film, const u_int index);
 
 	float gamma;
+	bool fullRange;
 
 	friend class boost::serialization::access;
 
