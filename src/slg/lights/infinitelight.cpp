@@ -67,10 +67,35 @@ void InfiniteLight::Preprocess() {
 	ImageMapStorage *imageMapStorage = imageMap->GetStorage();
 	ImageMapStorage* imageMapStorageDest = imageMapWork->GetStorage();
 
-	
-	float lum;
+
+
+	//float lum;
+	//float min_lum = 999999;
+	//float max_lum = -9999999;
 	vector<float> data(imageMap->GetWidth() * imageMap->GetHeight());
-	
+	//float maxVal = -INFINITY;
+	//float minVal = INFINITY;
+	for (u_int y = 0; y < imageMap->GetHeight(); ++y) {
+		for (u_int x = 0; x < imageMap->GetWidth(); ++x) {
+			const u_int index = x + y * imageMap->GetWidth();
+
+			if (sampleUpperHemisphereOnly && (y > imageMap->GetHeight() / 2))
+				data[index] = 0.f;
+			else
+				data[index] = imageMapStorage->GetFloat(index);
+
+			if (!IsValid(data[index]))
+				throw runtime_error("Pixel (" + ToString(x) + ", " + ToString(y) + ") in infinite light has an invalid value: " + ToString(data[index]));
+
+			//lum = imageMapStorage->GetSpectrum(index).Y();
+
+			//min_lum = min(min_lum, lum);
+			//max_lum = max(max_lum, lum);
+			//maxVal = Max(data[index], maxVal);
+			//minVal = Min(data[index], minVal);
+		}
+	}
+
 	/*float cutMin = (inBlack/100.f); // 0-1
 	float cutMax = (inWhite / 100.f);  // 0-1
 	float cutSize = cutMax - cutMin;
