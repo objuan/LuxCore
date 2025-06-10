@@ -45,7 +45,9 @@ GammaCorrectionPlugin::GammaCorrectionPlugin(const float g, const u_int tableSiz
 	const float dx = 1.f / tableSize;
 	for (u_int i = 0; i < tableSize; ++i, x += dx)
 		gammaTable[i] = powf(Clamp(x, 0.f, 1.f), 1.f / g);
-	
+
+	SLG_LOG("[GammaCorrectionPlugin] Full range: " << fullRange);
+
 	hardwareDevice = nullptr;
 	hwGammaTable = nullptr;
 	applyKernel = nullptr;

@@ -59,6 +59,7 @@ private:
 		ar & BOOST_SERIALIZATION_BASE_OBJECT_NVP(ImagePipelinePlugin);
 		ar & gamma;
 		ar & gammaTable;
+		ar & fullRange;
 	}
 
 	float Radiance2PixelFloat(const float x) const;
