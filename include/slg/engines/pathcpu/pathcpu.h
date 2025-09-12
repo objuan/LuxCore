@@ -47,6 +47,12 @@ public:
 protected:
 	void RenderFunc();
 	virtual boost::thread *AllocRenderThread() { return new boost::thread(&PathCPURenderThread::RenderFunc, this); }
+
+	// for light filter
+	LightStrategyQuery queryMode;
+	int lightGroupFilter;
+	LightStrategyQuery envgroup;
+	int percgroup0;
 };
 
 class PathCPURenderEngine : public CPUNoTileRenderEngine {
@@ -70,6 +76,12 @@ public:
 
 	friend class PathCPURenderThread;
 
+	// ping pong
+	bool light_pingpong;
+	int envgroup;
+	int percgroup0;
+
+
 protected:
 	static const luxrays::Properties &GetDefaultProps();
 
@@ -87,6 +99,10 @@ protected:
 	PathTracer pathTracer;
 	FilmSampleSplatter *lightSampleSplatter;
 	SamplerSharedData *lightSamplerSharedData;
+
+	
+	//SamplerSharedData* lightSamplerSharedData_1;
+	//luxrays::RandomGenerator seedBaseGenerator_1;
 };
 
 }
