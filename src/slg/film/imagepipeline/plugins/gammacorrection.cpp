@@ -36,15 +36,18 @@ using namespace slg;
 
 BOOST_CLASS_EXPORT_IMPLEMENT(slg::GammaCorrectionPlugin)
 
-GammaCorrectionPlugin::GammaCorrectionPlugin(const float g, const u_int tableSize) {
+GammaCorrectionPlugin::GammaCorrectionPlugin(const float g, const u_int tableSize, const bool _fullRange) {
 	gamma = g;
+	fullRange = _fullRange;
 
 	gammaTable.resize(tableSize, 0.f);
 	float x = 0.f;
 	const float dx = 1.f / tableSize;
 	for (u_int i = 0; i < tableSize; ++i, x += dx)
 		gammaTable[i] = powf(Clamp(x, 0.f, 1.f), 1.f / g);
-	
+
+	SLG_LOG("[GammaCorrectionPlugin] Full range: " << fullRange);
+
 	hardwareDevice = nullptr;
 	hwGammaTable = nullptr;
 	applyKernel = nullptr;
@@ -58,16 +61,20 @@ GammaCorrectionPlugin::~GammaCorrectionPlugin() {
 }
 
 ImagePipelinePlugin *GammaCorrectionPlugin::Copy() const {
-	return new GammaCorrectionPlugin(gamma, gammaTable.size());
+	return new GammaCorrectionPlugin(gamma, gammaTable.size(), fullRange);
 }
 
 float GammaCorrectionPlugin::Radiance2PixelFloat(const float x) const {
 	// Very slow !
-	//return powf(Clamp(x, 0.f, 1.f), 1.f / 2.2f);
-
-	const u_int tableSize = gammaTable.size();
-	const int index = Clamp<int>(Floor2UInt(tableSize * Clamp(x, 0.f, 1.f)), 0, tableSize - 1);
-	return gammaTable[index];
+	
+	if (fullRange)
+		return powf(Clamp(x, 0.f, INFINITY), 1.f / gamma);
+	else
+	{
+		const u_int tableSize = gammaTable.size();
+		const int index = Clamp<int>(Floor2UInt(tableSize * Clamp(x, 0.f, 1.f)), 0, tableSize - 1);
+		return gammaTable[index];
+	}
 }
 
 //------------------------------------------------------------------------------

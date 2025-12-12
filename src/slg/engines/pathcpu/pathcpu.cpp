@@ -32,7 +32,7 @@ using namespace slg;
 
 PathCPURenderEngine::PathCPURenderEngine(const RenderConfig *rcfg) :
 		CPUNoTileRenderEngine(rcfg), photonGICache(nullptr),
-		lightSampleSplatter(nullptr), lightSamplerSharedData(nullptr) {
+		lightSampleSplatter(nullptr), lightSamplerSharedData(nullptr)  {
 }
 
 PathCPURenderEngine::~PathCPURenderEngine() {
@@ -85,6 +85,14 @@ void PathCPURenderEngine::StartLockLess() {
 		if (samplerType == "RTPATHCPUSAMPLER")
 			throw runtime_error("PATHCPU render engine can not use RTPATHCPUSAMPLER");		
 	}
+
+	// ping pong
+	light_pingpong = false;
+	envgroup = 0;
+
+	light_pingpong = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.pingpong")).Get<int>()) == 1;
+	envgroup = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.envgroup")).Get<int>());
+	percgroup0 = (u_int)Max(0, cfg.Get(GetDefaultProps().Get("path.light.percgroup0")).Get<int>());
 
 	//--------------------------------------------------------------------------
 	// Restore render state if there is one
@@ -144,6 +152,7 @@ void PathCPURenderEngine::StartLockLess() {
 
 	pathTracer.SetPhotonGICache(photonGICache);
 	
+
 	//--------------------------------------------------------------------------
 
 	CPUNoTileRenderEngine::StartLockLess();
@@ -194,6 +203,9 @@ const Properties &PathCPURenderEngine::GetDefaultProps() {
 			CPUNoTileRenderEngine::GetDefaultProps() <<
 			Property("renderengine.type")(GetObjectTag()) <<
 			PathTracer::GetDefaultProps() <<
+			Property("path.light.pingpong")(0) <<
+			Property("path.light.envgroup")(0) <<
+			Property("path.light.percgroup0")(33) <<
 			PhotonGICache::GetDefaultProps();
 
 	return props;

@@ -87,6 +87,61 @@ void PathCPURenderThread::RenderFunc() {
 			engine->renderConfig->scene, engine->film,
 			&varianceClamping);
 
+	// PING PONG
+
+	PathTracerThreadState* pathTracerThreadState_1;
+	RandomGenerator* ping_pong_rndGen = nullptr;
+	RandomGenerator* ping_pong_rndSel = nullptr;
+
+	if (engine->light_pingpong)
+	{
+		ping_pong_rndSel = new RandomGenerator(engine->seedBase + 1 + threadIndex);
+		ping_pong_rndGen = new RandomGenerator(engine->seedBase + 1 + threadIndex);
+
+		Sampler* eyeSampler_1 = nullptr;
+		Sampler* lightSampler_1 = nullptr;
+
+		eyeSampler_1 = engine->renderConfig->AllocSampler(ping_pong_rndGen, engine->film,
+			nullptr, engine->samplerSharedData, Properties());
+		eyeSampler_1->SetThreadIndex(threadIndex);
+		eyeSampler_1->RequestSamples(PIXEL_NORMALIZED_ONLY, pathTracer.eyeSampleSize);
+
+		if (pathTracer.hybridBackForwardEnable) {
+			// Light path sampler is always Metropolis
+			Properties props;
+			props <<
+				Property("sampler.type")("METROPOLIS") <<
+				// Disable image plane meaning for samples 0 and 1
+				Property("sampler.imagesamples.enable")(false) <<
+				Property("sampler.metropolis.addonlycaustics")(true);
+
+			lightSampler_1 = Sampler::FromProperties(props, ping_pong_rndGen, engine->film, engine->lightSampleSplatter,
+				engine->lightSamplerSharedData);
+
+			lightSampler_1->SetThreadIndex(threadIndex);
+			lightSampler_1->RequestSamples(SCREEN_NORMALIZED_ONLY, pathTracer.lightSampleSize);
+		}
+
+		pathTracerThreadState_1 = new PathTracerThreadState(device,
+			eyeSampler_1, lightSampler_1,
+			engine->renderConfig->scene, engine->film,
+			&varianceClamping);
+	}
+
+	// default
+	if (engine->light_pingpong)
+		envgroup = engine->envgroup == 0 ? LightStrategyQuery::TYPE_QUERY_GROUP_0 : LightStrategyQuery::TYPE_QUERY_GROUP_1;
+	else
+		envgroup = TYPE_QUERY_ALL;
+
+	lightGroupFilter = -1;
+	//Sampler* sampler = sampler_0;
+	//sampler->lightGroupFilter = lightGroupFilter;
+	//vector<SampleResult>& sampleResults = sampleResults_0;
+	//vector<PathVertexVM>& lightPathVertices = lightPathVertices_0;
+	queryMode = LightStrategyQuery::TYPE_QUERY_ALL;
+	float group0Perc = (float)engine->percgroup0 / 100;
+
 	//--------------------------------------------------------------------------
 	// Trace paths
 	//--------------------------------------------------------------------------
@@ -102,7 +157,34 @@ void PathCPURenderThread::RenderFunc() {
 				break;
 		}
 
-		pathTracer.RenderSample(pathTracerThreadState);
+
+		if (engine->light_pingpong)
+		{
+			float p01 = ping_pong_rndSel->floatValue();
+			if (p01 < group0Perc)
+				queryMode = LightStrategyQuery::TYPE_QUERY_GROUP_0;
+			else
+				queryMode = LightStrategyQuery::TYPE_QUERY_GROUP_1;
+
+			//queryMode = LightStrategyQuery::TYPE_QUERY_GROUP_0;
+
+			lightGroupFilter = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? 0 : 1;
+		
+			PathTracerThreadState &state = (queryMode == LightStrategyQuery::TYPE_QUERY_GROUP_0) ? pathTracerThreadState : *pathTracerThreadState_1;
+			
+			if (state.lightSampler)
+			{
+				state.lightSampler->lightGroupFilter = lightGroupFilter;
+				state.lightSampler[0].lightGroupFilter = lightGroupFilter;
+			}
+			
+			state.eyeSampler->lightGroupFilter = lightGroupFilter;
+			state.eyeSampleResults[0].lightGroupFilter = lightGroupFilter;
+
+			pathTracer.RenderSample(state);
+		}
+		else
+			pathTracer.RenderSample(pathTracerThreadState);
 
 #ifdef WIN32
 		// Work around Windows bad scheduling
@@ -136,5 +218,11 @@ void PathCPURenderThread::RenderFunc() {
 	if (engine->photonGICache)
 		engine->photonGICache->FinishUpdate(threadIndex);
 
+	if (engine->light_pingpong)
+	{
+		delete pathTracerThreadState_1;
+		delete ping_pong_rndGen;
+		delete ping_pong_rndSel;
+	}
 	//SLG_LOG("[PathCPURenderEngine::" << threadIndex << "] Rendering thread halted");
 }

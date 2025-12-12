@@ -634,7 +634,9 @@ ImagePipeline *Film::CreateImagePipeline(const Properties &props, const string &
 				imagePipeline->AddPlugin(new GammaCorrectionPlugin(
 					props.Get(Property(prefix + ".value")(2.2f)).Get<float>(),
 					// 4096 => 12bit resolution
-					props.Get(Property(prefix + ".table.size")(4096u)).Get<u_int>()));
+					props.Get(Property(prefix + ".table.size")(4096u)).Get<u_int>(),
+					props.Get(Property(prefix + ".fullRange")(false)).Get<bool>()));
+
 			} else if (type == "OUTPUT_SWITCHER") {
 				const string type = props.Get(Property(prefix + ".channel")("DEPTH")).Get<string>();
 				
