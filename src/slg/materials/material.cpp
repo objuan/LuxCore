@@ -215,6 +215,7 @@ Properties Material::ToProperties(const ImageMapCache &imgMapCache, const bool u
 		const string fileName = useRealFileName ?
 			emissionMap->GetName() : imgMapCache.GetSequenceFileName(emissionMap);
 		props.Set(Property("scene.materials." + name + ".emission.mapfile")(fileName));
+		props.Set(Property("scene.materials." + name + ".emission.mapphioffset")(emittedMapPhiOffset / 180.f * M_PI)); //to radians));
 		props.Set(emissionMap->ToProperties("scene.materials." + name, false));
 	}
 	props.Set(Property("scene.materials." + name + ".emission.temperature")(emittedTemperature));

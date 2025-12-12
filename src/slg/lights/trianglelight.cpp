@@ -89,8 +89,10 @@ Spectrum TriangleLight::Emit(const Scene &scene,
 
 	Spectrum emissionColor(1.f);
 	Vector localDirOut;
+	float phiOffset = 0;
 	const SampleableSphericalFunction *emissionFunc = lightMaterial->GetEmissionFunc();
 	if (emissionFunc) {
+		phiOffset = lightMaterial->GetEmittedMapPhiOffset();
 		emissionFunc->Sample(u2, u3, &localDirOut, &emissionPdfW);
 		emissionColor = ((SphericalFunction *)emissionFunc)->Evaluate(localDirOut) / emissionFunc->Average();
 	} else {
@@ -131,6 +133,23 @@ Spectrum TriangleLight::Emit(const Scene &scene,
 			passThroughEvent);
 	// Add bump?
 	// lightMaterial->Bump(&hitPoint, 1.f);
+
+
+	// rotate localDirOut about its local Z (i.e. about the surface local "up") by phiOffset
+	if (phiOffset != 0.f) {
+		const float c = cosf(phiOffset);
+		const float s = sinf(phiOffset);
+
+		// localDirOut assumed (x,y,z) where z is local up. Rotate x,y:
+		Vector rotatedLocalDir(
+			c * localDirOut.x - s * localDirOut.y,
+			s * localDirOut.x + c * localDirOut.y,
+			localDirOut.z
+		);
+
+		localDirOut = rotatedLocalDir;
+	}
+
 
 	const Frame frame(tmpHitPoint.GetFrame());
 
