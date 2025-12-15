@@ -166,7 +166,7 @@ public:
 			const u_int xRes = 512, const u_int yRes = 256);
 	~IESSphericalFunction();
 
-	static ImageMap *IES2ImageMap(const PhotometricDataIES &data, const bool flipZ,
+	static ImageMap *IES2ImageMap(const PhotometricDataIES &data, const bool flipZ, const float iesHorizontalOffset,
 			const u_int xRes = 512, const u_int yRes = 256);
 };
 
