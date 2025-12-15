@@ -119,14 +119,14 @@ float SampleableSphericalFunction::Average() const {
 
 IESSphericalFunction::IESSphericalFunction(const PhotometricDataIES &data, const bool flipZ,
 		const u_int xRes, const u_int yRes) {
-	SetImageMap(IES2ImageMap(data, flipZ));
+	SetImageMap(IES2ImageMap(data, flipZ, 0));
 }
 
 IESSphericalFunction::~IESSphericalFunction() {
 	delete imgMap;
 }
 
-ImageMap *IESSphericalFunction::IES2ImageMap(const PhotometricDataIES &data, const bool flipZ,
+ImageMap *IESSphericalFunction::IES2ImageMap(const PhotometricDataIES &data, const bool flipZ, const float iesHorizontalOffset,
 			const u_int xRes, const u_int yRes) {
 	// This should be a warning but I have no way to emit that kind of information here
 	if (data.m_PhotometricType != PhotometricDataIES::PHOTOMETRIC_TYPE_C)
@@ -237,7 +237,9 @@ ImageMap *IESSphericalFunction::IES2ImageMap(const PhotometricDataIES &data, con
 		const u_int tgtY = flipZ ? (yRes - 1) - y : y;
 
 		for (u_int x = 0; x < xRes; ++x) {
-			const float s = (x + .5f) / xRes;
+			float s = (x + .5f) / xRes;
+			s += iesHorizontalOffset / (2.0f * M_PI);  // rotationOffset in radians
+			s = fmod(s, 1.f);                     // wrap around
 			const float u = uFunc->Eval(s);
 			const u_int u1 = Floor2UInt(u);
 			const u_int u2 = min(nVFuncs - 1, u1 + 1);
