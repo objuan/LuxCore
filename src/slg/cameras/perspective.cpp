@@ -258,8 +258,14 @@ void PerspectiveCamera::GetPDF(const Ray &eyeRay, const float eyeDistance,
 		const float filmX, const float filmY,
 		float *pdfW, float *fluxToRadianceFactor) const {
 	Vector globalDir = dir;
+
 	if (motionSystem)
+	{
+		if (orig == target)
+			globalDir = Vector(0, 0, 1);
 		globalDir *= motionSystem->Sample(eyeRay.time);
+	}
+
 
 	const float cosAtCamera = Dot(eyeRay.d, globalDir);
 	if (cosAtCamera <= 0.f) {
