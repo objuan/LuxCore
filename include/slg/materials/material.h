@@ -80,8 +80,6 @@ public:
 	const luxrays::Spectrum &GetEmittedFactor() const { return emittedFactor; }
 	void SetEmittedTheta(const float theta);
 	float GetEmittedTheta() const { return emittedTheta; }
-	void SetEmittedMapPhiOffset(const float v) { emittedMapPhiOffset = v; }
-	float GetEmittedMapPhiOffset() const { return emittedMapPhiOffset; }
 	float GetEmittedCosThetaMax() const { return emittedCosThetaMax; }
 	void SetEmittedTemperature(const float v) { emittedTemperature = v; UpdateEmittedFactor(); }
 	void SetEmittedTemperatureNormalize(const bool v) { emittedNormalizeTemperature = v; UpdateEmittedFactor(); }
@@ -225,7 +223,6 @@ protected:
 	bool emittedPowerNormalize, emittedGainNormalize;
 	float emittedTemperature;
 	bool emittedNormalizeTemperature;
-	float emittedMapPhiOffset;
 
 	const Texture *frontTransparencyTex;
 	const Texture *backTransparencyTex;

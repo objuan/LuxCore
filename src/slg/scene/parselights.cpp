@@ -124,7 +124,10 @@ ImageMap *Scene::CreateEmissionMap(const string &propName, const luxrays::Proper
 	if (iesData) {
 		if (iesData->IsValid()) {
 			const bool flipZ = props.Get(Property(propName + ".flipz")(false)).Get<bool>();
-			iesMap = IESSphericalFunction::IES2ImageMap(*iesData, flipZ,
+			float iesHorizontalOffset = Clamp(props.Get(Property(propName + ".iesHorizontalOffset")(0.f)).Get<float>(), 0.f, 360.f);
+			iesHorizontalOffset = iesHorizontalOffset * (M_PI / 180.f);//to radians
+
+			iesMap = IESSphericalFunction::IES2ImageMap(*iesData, flipZ, iesHorizontalOffset,
 					(width > 0) ? width : 512,
 					(height > 0) ? height : 256);
 

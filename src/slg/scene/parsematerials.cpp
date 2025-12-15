@@ -559,8 +559,6 @@ Material *Scene::CreateMaterial(const u_int defaultMatID, const string &matName,
 	const ImageMap *emissionMap = CreateEmissionMap(propName + ".emission", props);
 	if (emissionMap) {
 		// There is one
-		float phiOffsetDeg = Clamp(props.Get(Property(propName + ".emission.mapphioffset")(0.f)).Get<float>(), 0.f, 360.f);
-		mat->SetEmittedMapPhiOffset(phiOffsetDeg * (M_PI / 180.f)); //to radians
 		mat->SetEmissionMap(emissionMap);
 	}
 
