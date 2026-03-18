@@ -142,9 +142,6 @@ bool PhotometricDataIES::BuildKeywordList(istream &is) {
 	while(is.good()) {
 		ReadLine(is, templine);
 
-		if (templine.find("TILT") != string::npos)
-			break;
-
 		const size_t kwStartPos = templine.find_first_of("[");
 		const size_t kwEndPos = templine.find_first_of("]");
 
@@ -163,6 +160,9 @@ bool PhotometricDataIES::BuildKeywordList(istream &is) {
 			} else
 				sVal += " " + templine.substr(kwEndPos + 1, templine.size() - (kwEndPos + 1));
 		}
+		else if (templine.find("TILT") != string::npos)
+			break;
+
 	}
 
 	if (!is.good())
@@ -204,7 +204,8 @@ bool PhotometricDataIES::BuildLightData(istream &is) {
 	while(is.good()) {
 		ReadLine(is, templine);
 
-		if (templine.find("TILT") != string::npos)
+		const size_t kwStartPos = templine.find_first_of("[");
+		if (kwStartPos == string::npos && templine.find("TILT") != string::npos)
 			break;
 	}
 	
