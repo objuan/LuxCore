@@ -42,19 +42,39 @@ void Scene::ParseObjects(const Properties &props) {
 		if (objName == "")
 			throw runtime_error("Syntax error in " + key);
 
+
 		if (objDefs.IsSceneObjectDefined(objName)) {
-			// A replacement for an existing object
-			const SceneObject *oldObj = objDefs.GetSceneObject(objName);
+			const SceneObject* oldObj = objDefs.GetSceneObject(objName);
 			const bool wasLightSource = oldObj->GetMaterial()->IsLightSource();
 
-			// Check if the old object was a light source
-			if (wasLightSource) {
-				editActions.AddActions(LIGHTS_EDIT | LIGHT_TYPES_EDIT);
+			// If we have a transformation property in the props for an existing object
+			if (props.HaveNames("scene.objects." + objName + ".transformation")) {
+				const Matrix4x4 mat = props.Get(Property("scene.objects." + objName + ".transformation")(Matrix4x4::MAT_IDENTITY)).Get<Matrix4x4>();
 
-				// Delete all old triangle lights
-				lightDefs.DeleteLightSourceStartWith(Scene::EncodeTriangleLightNamePrefix(oldObj->GetName()));
+				Transform newTrans = Transform(mat);
+
+				// CALL THE FAST UPDATE INSTEAD OF RECREATING
+				UpdateObjectTransformation(objName, newTrans);
+
+				if (wasLightSource)
+					editActions.AddActions(LIGHTS_EDIT);
+
+				// Skip the rest of the loop for this object so we don't call CreateObject
+				continue;
+			}
+			else {
+				// Check if the old object was a light source
+				if (wasLightSource) {
+					editActions.AddActions(LIGHTS_EDIT | LIGHT_TYPES_EDIT);
+
+					// Delete all old triangle lights
+					lightDefs.DeleteLightSourceStartWith(Scene::EncodeTriangleLightNamePrefix(oldObj->GetName()));
+				}
+				editActions.AddActions(GEOMETRY_EDIT);
 			}
 		}
+		else
+			editActions.AddActions(GEOMETRY_EDIT);
 
 		// In order to have harlequin colors with OBJECT_ID output
 		const u_int index = defaultObjectIDIndex++;
@@ -82,7 +102,6 @@ void Scene::ParseObjects(const Properties &props) {
 	}
 	SDL_LOG("Scene objects count: " << objCount);
 
-	editActions.AddActions(GEOMETRY_EDIT);
 }
 
 SceneObject *Scene::CreateObject(const u_int defaultObjID, const string &objName, const Properties &props) {
@@ -208,6 +227,15 @@ SceneObject *Scene::CreateObject(const u_int defaultObjID, const string &objName
 
 void Scene::DuplicateObject(const std::string &srcObjName, const std::string &dstObjName,
 		const luxrays::Transform &trans, const u_int dstObjID) {
+
+	if (objDefs.IsSceneObjectDefined(dstObjName)) {
+        // If the object already exists, we just move it!
+        UpdateObjectTransformation(dstObjName, trans);
+        
+        return; 
+    }
+	
+	
 	const SceneObject *srcObj = objDefs.GetSceneObject(srcObjName);
 
 	// Check the type of mesh

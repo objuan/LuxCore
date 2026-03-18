@@ -203,6 +203,8 @@ void EmbreeAccel::Init(const std::deque<const Mesh *> &meshes,
 }
 
 void EmbreeAccel::Update() {
+	const double t0 = WallClockTime();
+	
 	// Update all Embree scenes used for instances
 	bool updated = false;
 	std::pair<const Mesh *, RTCGeometry> elem;
@@ -219,6 +221,8 @@ void EmbreeAccel::Update() {
 
 	if (updated)
 		rtcCommitScene(embreeScene);
+
+	LR_LOG(ctx, "EmbreeAccel update time: " << int((WallClockTime() - t0) * 1000) << "ms");
 }
 
 bool EmbreeAccel::MeshPtrCompare(const Mesh *p0, const Mesh *p1) {
